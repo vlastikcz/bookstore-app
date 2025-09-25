@@ -1,11 +1,5 @@
 http:
   middlewares:
-    request-id:
-      plugin:
-        requestid:
-          headerName: X-Request-Id
-          generator: uuid4
-          keepExisting: true
     catalog-jwt:
       jwt:
         tokenHeader: Authorization
