@@ -1,0 +1,21 @@
+http:
+  routers:
+    catalog-router:
+      rule: "PathPrefix(`/api`) && HeadersRegexp(`Accept`,`^(application/vnd\\.bookstore\\.v1\\+json)$`)"
+      entryPoints:
+        - web
+      service: catalog-service
+    keycloak-router:
+      rule: "PathPrefix(`/auth`) && HeadersRegexp(`Accept`,`^(application/vnd\\.bookstore\\.v1\\+json)$`)"
+      entryPoints:
+        - web
+      service: keycloak-service
+  services:
+    catalog-service:
+      loadBalancer:
+        servers:
+          - url: "http://catalog-service:8080"
+    keycloak-service:
+      loadBalancer:
+        servers:
+          - url: "http://keycloak:8080"

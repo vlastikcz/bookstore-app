@@ -1,0 +1,41 @@
+{
+  "realm": "bookstore",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "Full access to catalog APIs" },
+      { "name": "staff", "description": "Read-only access to catalog APIs" }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "admin", "temporary": false }
+      ],
+      "realmRoles": ["admin"]
+    },
+    {
+      "username": "staff",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "staff", "temporary": false }
+      ],
+      "realmRoles": ["staff"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "catalog-service",
+      "publicClient": false,
+      "secret": "catalog-secret",
+      "serviceAccountsEnabled": true,
+      "redirectUris": ["*"]
+    }
+  ]
+}
