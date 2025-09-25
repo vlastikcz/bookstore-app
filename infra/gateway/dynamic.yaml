@@ -1,12 +1,12 @@
 http:
   routers:
     catalog-router:
-      rule: "PathPrefix(`/api`) && HeadersRegexp(`Accept`,`^(application/vnd\\.bookstore\\.v1\\+json)$`)"
+      rule: "PathPrefix(`/api`) && Header(`Accept`, `application/vnd.bookstore.v1+json`)"
       entryPoints:
         - web
       service: catalog-service
     keycloak-router:
-      rule: "PathPrefix(`/auth`) && HeadersRegexp(`Accept`,`^(application/vnd\\.bookstore\\.v1\\+json)$`)"
+      rule: "PathPrefix(`/auth`)"
       entryPoints:
         - web
       service: keycloak-service

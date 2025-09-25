@@ -2,17 +2,7 @@ SHELL := /bin/bash
 
 COMPOSE_FILE := infra/compose/docker-compose.yaml
 
-.PHONY: bootstrap run-local run-stack stop test clean
-
-bootstrap:
-	@if [ ! -x ./mvnw ]; then \
-		if command -v mvn >/dev/null 2>&1; then \
-			mvn -N io.takari:maven:wrapper; \
-		else \
-			echo "Maven wrapper not found and mvn unavailable. Install Maven to run 'make bootstrap' or add mvnw manually."; \
-			exit 1; \
-		fi; \
-	fi
+.PHONY: run-local run-stack stop test clean
 
 run-local:
 	./mvnw -pl services/catalog-service -am spring-boot:run -Dspring-boot.run.profiles=default
