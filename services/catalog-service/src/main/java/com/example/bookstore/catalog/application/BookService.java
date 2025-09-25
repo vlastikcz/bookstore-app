@@ -27,7 +27,7 @@ public class BookService {
 
     @Transactional(readOnly = true)
     public Page<Book> search(String title, String author, String genre, Pageable pageable) {
-        return repository.search(normalize(title), normalize(author), normalize(genre), pageable);
+        return repository.search(normalizeQuery(title), normalizeQuery(author), normalizeQuery(genre), pageable);
     }
 
     @Transactional(readOnly = true)
@@ -59,7 +59,16 @@ public class BookService {
         return existing;
     }
 
-    private String normalize(String value) {
-        return value == null || value.isBlank() ? null : value;
+    private String normalizeQuery(String input) {
+        if (input == null) {
+            return null;
+        }
+
+        String trimmed = input.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+
+        return trimmed;
     }
 }

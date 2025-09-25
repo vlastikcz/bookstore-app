@@ -1,5 +1,11 @@
 http:
   middlewares:
+    request-id:
+      plugin:
+        requestid:
+          headerName: X-Request-Id
+          generator: uuid4
+          keepExisting: true
     catalog-jwt:
       jwt:
         tokenHeader: Authorization
@@ -12,6 +18,10 @@ http:
             - http:
                 url: "http://keycloak:8080/realms/bookstore/protocol/openid-connect/certs"
                 timeout: "5s"
+    catalog-rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
   routers:
     catalog-router:
       rule: "PathPrefix(`/api`) && Header(`Accept`, `application/vnd.bookstore.v1+json`)"
@@ -20,11 +30,14 @@ http:
       service: catalog-service
       middlewares:
         - catalog-jwt
+        - catalog-rate-limit
     swagger-router:
       rule: "PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`)"
       entryPoints:
         - web
       service: catalog-service
+      middlewares:
+        - catalog-rate-limit
     keycloak-router:
       rule: "PathPrefix(`/auth`)"
       entryPoints:
