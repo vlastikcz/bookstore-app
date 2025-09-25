@@ -1,0 +1,20 @@
+# Maven
+/target
+**/target/
+
+# IDEs
+.idea/
+*.iml
+.project
+.classpath
+factorypath
+.settings/
+
+# OS files
+.DS_Store
+
+# Docker
+infra/compose/postgres-data/
+
+# VSCode
+.vscode/
