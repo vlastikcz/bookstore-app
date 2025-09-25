@@ -5,6 +5,11 @@ http:
       entryPoints:
         - web
       service: catalog-service
+    swagger-router:
+      rule: "PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`)"
+      entryPoints:
+        - web
+      service: catalog-service
     keycloak-router:
       rule: "PathPrefix(`/auth`)"
       entryPoints:
