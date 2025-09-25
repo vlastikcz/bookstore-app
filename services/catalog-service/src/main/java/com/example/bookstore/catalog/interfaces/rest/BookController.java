@@ -1,11 +1,13 @@
 package com.example.bookstore.catalog.interfaces.rest;
 
 import java.net.URI;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -24,7 +26,7 @@ import com.example.bookstore.catalog.application.BookService;
 import com.example.bookstore.catalog.domain.Book;
 
 @RestController
-@RequestMapping("/api/books")
+@RequestMapping(value = "/api/books", produces = ApiMediaType.V1_JSON)
 @Validated
 public class BookController {
 
@@ -34,7 +36,7 @@ public class BookController {
         this.service = service;
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BookResponse> create(@RequestBody @Validated BookRequest request) {
         Book saved = service.create(mapToEntity(request));
@@ -43,7 +45,7 @@ public class BookController {
                 .body(mapToResponse(saved));
     }
 
-    @GetMapping
+    @GetMapping(produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<PageResponse<BookResponse>> search(
             @RequestParam(required = false) String title,
@@ -56,24 +58,24 @@ public class BookController {
         return ResponseEntity.ok(mapToPageResponse(result));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping(value = "/{id}", produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    public ResponseEntity<BookResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<BookResponse> getById(@PathVariable UUID id) {
         return service.findById(id)
                 .map(book -> ResponseEntity.ok(mapToResponse(book)))
                 .orElseThrow(() -> new BookNotFoundException(id));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BookResponse> update(@PathVariable Long id, @RequestBody @Validated BookRequest request) {
+    public ResponseEntity<BookResponse> update(@PathVariable UUID id, @RequestBody @Validated BookRequest request) {
         Book updated = service.update(id, mapToEntity(request));
         return ResponseEntity.ok(mapToResponse(updated));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }

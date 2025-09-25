@@ -1,6 +1,7 @@
 package com.example.bookstore.catalog.application;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,12 +31,12 @@ public class BookService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Book> findById(Long id) {
+    public Optional<Book> findById(UUID id) {
         return repository.findById(id);
     }
 
     @Transactional
-    public Book update(Long id, Book updated) {
+    public Book update(UUID id, Book updated) {
         return repository.findById(id)
                 .map(existing -> applyUpdates(existing, updated))
                 .map(repository::save)
@@ -43,7 +44,7 @@ public class BookService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(UUID id) {
         if (!repository.existsById(id)) {
             throw new BookNotFoundException(id);
         }
