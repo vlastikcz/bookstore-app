@@ -1,0 +1,1118 @@
+openapi: 3.0.3
+info:
+  title: V-Bookstore API
+  version: 1.0.0
+  description: >-
+    REST API for V-Bookstore catalog and authentication services. Accept header-based
+    versioning follows Zalando RESTful API Guidelines. All representations are JSON encoded
+    as UTF-8 and convey optimistic concurrency semantics via ETag headers.
+servers:
+  - url: https://api.vbookstore.com
+    description: Production
+  - url: https://sandbox.api.vbookstore.com
+    description: Sandbox
+tags:
+  - name: Catalog
+    description: Book catalog CRUD and search operations.
+  - name: Supporting Collections
+    description: Author and genre lookup resources.
+  - name: Authentication
+    description: Authentication and identity management endpoints.
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  headers:
+    ETag:
+      description: Entity tag for the returned representation.
+      schema:
+        type: string
+    RateLimit-Limit:
+      description: Request limit for the current time window.
+      schema:
+        type: integer
+    RateLimit-Remaining:
+      description: Remaining requests in the current window.
+      schema:
+        type: integer
+    RateLimit-Reset:
+      description: Unix epoch seconds when the current window resets.
+      schema:
+        type: integer
+    Trace-Id:
+      description: Trace identifier propagated for observability.
+      schema:
+        type: string
+  parameters:
+    AcceptCatalog:
+      name: Accept
+      in: header
+      required: true
+      schema:
+        type: string
+        enum:
+          - application/vnd.vbookstore.catalog+json;version=1
+    AcceptAuth:
+      name: Accept
+      in: header
+      required: true
+      schema:
+        type: string
+        enum:
+          - application/vnd.vbookstore.auth+json;version=1
+    ContentTypeCatalog:
+      name: Content-Type
+      in: header
+      required: true
+      schema:
+        type: string
+        enum:
+          - application/vnd.vbookstore.catalog+json;version=1
+    ContentTypeAuth:
+      name: Content-Type
+      in: header
+      required: true
+      schema:
+        type: string
+        enum:
+          - application/vnd.vbookstore.auth+json;version=1
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+    IfNoneMatchStar:
+      name: If-None-Match
+      in: header
+      required: true
+      schema:
+        type: string
+        enum:
+          - '*'
+    IfNoneMatchOptional:
+      name: If-None-Match
+      in: header
+      required: false
+      schema:
+        type: string
+    PageNumber:
+      name: page[number]
+      in: query
+      description: Page index starting at 1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page[size]
+      in: query
+      description: Page size (max 100).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      description: Comma-separated sort fields (prefix with '-' for descending).
+      schema:
+        type: string
+    Fields:
+      name: fields
+      in: query
+      description: Sparse fieldset selector following Zalando guidelines.
+      schema:
+        type: string
+    Include:
+      name: include
+      in: query
+      description: Comma-separated list of related resources to include (authors,genres).
+      schema:
+        type: string
+    FilterTitle:
+      name: filter[title]
+      in: query
+      description: Case-insensitive substring match over title.
+      schema:
+        type: string
+    FilterAuthor:
+      name: filter[author]
+      in: query
+      description: Case-insensitive substring match over author name.
+      schema:
+        type: string
+    FilterGenre:
+      name: filter[genre]
+      in: query
+      description: Filter by genre identifier or slug.
+      schema:
+        type: string
+    FilterPriceGt:
+      name: filter[price][gt]
+      in: query
+      description: Filter for price greater than specified amount.
+      schema:
+        type: number
+    FilterPriceLt:
+      name: filter[price][lt]
+      in: query
+      description: Filter for price less than specified amount.
+      schema:
+        type: number
+  schemas:
+    Problem:
+      type: object
+      required:
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        code:
+          type: string
+        violations:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+    Money:
+      type: object
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+    InventorySnapshot:
+      type: object
+      required:
+        - on_hand
+        - status
+      properties:
+        on_hand:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - IN_STOCK
+            - LOW_STOCK
+            - OUT_OF_STOCK
+            - PREORDER
+    AuthorRef:
+      type: object
+      required:
+        - author_id
+        - name
+      properties:
+        author_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    GenreRef:
+      type: object
+      required:
+        - genre_id
+        - name
+      properties:
+        genre_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    Book:
+      type: object
+      required:
+        - book_id
+        - title
+        - authors
+        - genres
+        - price
+        - inventory
+        - created_at
+        - updated_at
+      properties:
+        book_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        authors:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthorRef'
+        genres:
+          type: array
+          items:
+            $ref: '#/components/schemas/GenreRef'
+        price:
+          $ref: '#/components/schemas/Money'
+        inventory:
+          $ref: '#/components/schemas/InventorySnapshot'
+        isbn_10:
+          type: string
+          nullable: true
+        isbn_13:
+          type: string
+          nullable: true
+        published_at:
+          type: string
+          format: date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        _links:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              href:
+                type: string
+                format: uri
+    BookCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/Book'
+      required:
+        - book_id
+    BookPatch:
+      type: object
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        authors:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthorRef'
+        genres:
+          type: array
+          items:
+            $ref: '#/components/schemas/GenreRef'
+        price:
+          $ref: '#/components/schemas/Money'
+        inventory:
+          $ref: '#/components/schemas/InventorySnapshot'
+        isbn_10:
+          type: string
+          nullable: true
+        isbn_13:
+          type: string
+          nullable: true
+        published_at:
+          type: string
+          format: date
+          nullable: true
+    PaginatedBooks:
+      type: object
+      required:
+        - data
+        - meta
+        - links
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        meta:
+          type: object
+          required:
+            - page
+          properties:
+            page:
+              type: object
+              properties:
+                number:
+                  type: integer
+                size:
+                  type: integer
+                total_elements:
+                  type: integer
+                total_pages:
+                  type: integer
+        links:
+          type: object
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+              nullable: true
+            prev:
+              type: string
+              nullable: true
+            first:
+              type: string
+              nullable: true
+            last:
+              type: string
+              nullable: true
+    Author:
+      type: object
+      required:
+        - author_id
+        - name
+      properties:
+        author_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        _links:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              href:
+                type: string
+                format: uri
+    Genre:
+      type: object
+      required:
+        - genre_id
+        - name
+      properties:
+        genre_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        _links:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              href:
+                type: string
+                format: uri
+    PaginatedAuthors:
+      type: object
+      required:
+        - data
+        - meta
+        - links
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Author'
+        meta:
+          $ref: '#/components/schemas/PaginatedBooks/properties/meta'
+        links:
+          type: object
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+              nullable: true
+            prev:
+              type: string
+              nullable: true
+    PaginatedGenres:
+      type: object
+      required:
+        - data
+        - meta
+        - links
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Genre'
+        meta:
+          $ref: '#/components/schemas/PaginatedBooks/properties/meta'
+        links:
+          type: object
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+              nullable: true
+            prev:
+              type: string
+              nullable: true
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+        refresh_token:
+          type: string
+        scope:
+          type: string
+    TokenRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    TokenRefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+    User:
+      type: object
+      required:
+        - user_id
+        - username
+        - display_name
+        - roles
+        - status
+        - created_at
+        - updated_at
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        display_name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum:
+              - ADMIN
+              - STAFF
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - LOCKED
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        _links:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              href:
+                type: string
+                format: uri
+    UserCreateRequest:
+      type: object
+      required:
+        - user_id
+        - username
+        - display_name
+        - roles
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        display_name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum:
+              - ADMIN
+              - STAFF
+        temporary_password:
+          type: string
+          nullable: true
+    UserPatch:
+      type: object
+      properties:
+        display_name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum:
+              - ADMIN
+              - STAFF
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - LOCKED
+    RoleDescriptor:
+      type: object
+      required:
+        - role
+        - description
+      properties:
+        role:
+          type: string
+        description:
+          type: string
+paths:
+  /books/{book_id}:
+    put:
+      tags: [Catalog]
+      summary: Create or replace a book
+      operationId: putBook
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/ContentTypeCatalog'
+        - $ref: '#/components/parameters/IfNoneMatchStar'
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.catalog+json;version=1:
+            schema:
+              $ref: '#/components/schemas/BookCreateRequest'
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              description: Canonical URI of the created resource.
+              schema:
+                type: string
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Conflict when resource exists with different payload
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    get:
+      tags: [Catalog]
+      summary: Retrieve a book by identifier
+      operationId: getBook
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/IfNoneMatchOptional'
+        - $ref: '#/components/parameters/Fields'
+        - $ref: '#/components/parameters/Include'
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Book representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '304':
+          description: Not modified
+        '404':
+          description: Book not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags: [Catalog]
+      summary: Apply partial update to book
+      operationId: patchBook
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/IfMatch'
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/BookPatch'
+      responses:
+        '200':
+          description: Updated book representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    delete:
+      tags: [Catalog]
+      summary: Delete a book
+      operationId: deleteBook
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/IfMatch'
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /books:
+    get:
+      tags: [Catalog]
+      summary: Search and list books
+      operationId: listBooks
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Fields'
+        - $ref: '#/components/parameters/Include'
+        - $ref: '#/components/parameters/FilterTitle'
+        - $ref: '#/components/parameters/FilterAuthor'
+        - $ref: '#/components/parameters/FilterGenre'
+        - $ref: '#/components/parameters/FilterPriceGt'
+        - $ref: '#/components/parameters/FilterPriceLt'
+      responses:
+        '200':
+          description: Paginated list of books
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            RateLimit-Limit:
+              $ref: '#/components/headers/RateLimit-Limit'
+            RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimit-Remaining'
+            RateLimit-Reset:
+              $ref: '#/components/headers/RateLimit-Reset'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/PaginatedBooks'
+  /books/{book_id}/inventory:
+    put:
+      tags: [Catalog]
+      summary: Replace inventory snapshot
+      operationId: putBookInventory
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/ContentTypeCatalog'
+        - $ref: '#/components/parameters/IfMatch'
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.catalog+json;version=1:
+            schema:
+              $ref: '#/components/schemas/InventorySnapshot'
+      responses:
+        '200':
+          description: Updated inventory snapshot
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/InventorySnapshot'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /authors:
+    get:
+      tags: [Supporting Collections]
+      summary: List authors
+      operationId: listAuthors
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Fields'
+        - name: filter[name]
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated authors
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuthors'
+  /genres:
+    get:
+      tags: [Supporting Collections]
+      summary: List genres
+      operationId: listGenres
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Fields'
+        - name: filter[name]
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated genres
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/PaginatedGenres'
+  /auth/tokens:
+    post:
+      tags: [Authentication]
+      summary: Issue tokens via password grant
+      operationId: issueToken
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptAuth'
+        - $ref: '#/components/parameters/ContentTypeAuth'
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.auth+json;version=1:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '201':
+          description: Token pair issued
+          headers:
+            RateLimit-Limit:
+              $ref: '#/components/headers/RateLimit-Limit'
+            RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimit-Remaining'
+            RateLimit-Reset:
+              $ref: '#/components/headers/RateLimit-Reset'
+          content:
+            application/vnd.vbookstore.auth+json;version=1:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Unauthorized
+          headers:
+            RateLimit-Limit:
+              $ref: '#/components/headers/RateLimit-Limit'
+            RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimit-Remaining'
+            RateLimit-Reset:
+              $ref: '#/components/headers/RateLimit-Reset'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /auth/tokens/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      operationId: refreshToken
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptAuth'
+        - $ref: '#/components/parameters/ContentTypeAuth'
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.auth+json;version=1:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+      responses:
+        '201':
+          description: Refreshed token pair
+          content:
+            application/vnd.vbookstore.auth+json;version=1:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /auth/users/{user_id}:
+    post:
+      tags: [Authentication]
+      summary: Create user (idempotent)
+      operationId: createUser
+      parameters:
+        - $ref: '#/components/parameters/AcceptAuth'
+        - $ref: '#/components/parameters/ContentTypeAuth'
+        - $ref: '#/components/parameters/IfNoneMatchStar'
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.auth+json;version=1:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: User created
+          headers:
+            Location:
+              description: Canonical URI of user resource.
+              schema:
+                type: string
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.auth+json;version=1:
+              schema:
+                $ref: '#/components/schemas/User'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Conflicting representation already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    get:
+      tags: [Authentication]
+      summary: Retrieve user metadata
+      operationId: getUser
+      parameters:
+        - $ref: '#/components/parameters/AcceptAuth'
+        - $ref: '#/components/parameters/IfNoneMatchOptional'
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.auth+json;version=1:
+              schema:
+                $ref: '#/components/schemas/User'
+        '304':
+          description: Not modified
+        '404':
+          description: User not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags: [Authentication]
+      summary: Update user metadata
+      operationId: patchUser
+      parameters:
+        - $ref: '#/components/parameters/AcceptAuth'
+        - $ref: '#/components/parameters/IfMatch'
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/UserPatch'
+      responses:
+        '200':
+          description: Updated user
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.auth+json;version=1:
+              schema:
+                $ref: '#/components/schemas/User'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /auth/users/{user_id}/credentials/reset:
+    post:
+      tags: [Authentication]
+      summary: Initiate credential reset
+      operationId: resetCredentials
+      parameters:
+        - $ref: '#/components/parameters/AcceptAuth'
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Reset initiated
+        '404':
+          description: User not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /auth/roles:
+    get:
+      tags: [Authentication]
+      summary: List available roles
+      operationId: listRoles
+      parameters:
+        - $ref: '#/components/parameters/AcceptAuth'
+      responses:
+        '200':
+          description: Role descriptors
+          content:
+            application/vnd.vbookstore.auth+json;version=1:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoleDescriptor'
