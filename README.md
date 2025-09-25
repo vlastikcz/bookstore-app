@@ -1,4 +1,4 @@
-# V-BOOKSTORE
+# BOOKSTORE-APP
 
 Principles - demo application ready for rapid growth. Simple and minimal, but open for simple extension.
 
@@ -15,4 +15,11 @@ An API Gateway was implemented using Traefik to allow easier service management 
 Authentication was implemented using Keycloak.
 
 Secret management was implemented naively - in production it should use Consul or similar.
+
+
+Sample account setup is defined in infra/compose/keycloak/bookstore-realm.json.
+
+Demo accounts:
+admin/Admin
+staff/staff
 
