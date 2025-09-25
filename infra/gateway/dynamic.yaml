@@ -1,10 +1,25 @@
 http:
+  middlewares:
+    catalog-jwt:
+      jwt:
+        tokenHeader: Authorization
+        tokenValuePrefix: "Bearer "
+        requiredClaims:
+          iss:
+            - "http://keycloak:8080/realms/bookstore"
+        jwks:
+          sources:
+            - http:
+                url: "http://keycloak:8080/realms/bookstore/protocol/openid-connect/certs"
+                timeout: "5s"
   routers:
     catalog-router:
       rule: "PathPrefix(`/api`) && Header(`Accept`, `application/vnd.bookstore.v1+json`)"
       entryPoints:
         - web
       service: catalog-service
+      middlewares:
+        - catalog-jwt
     swagger-router:
       rule: "PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`)"
       entryPoints:

@@ -23,3 +23,9 @@ Demo accounts:
 admin/Admin
 staff/staff
 
+## Local development
+
+1. Start the infrastructure dependencies you need, e.g. `docker compose -f infra/compose/docker-compose.yaml up postgres` (and optionally Keycloak/Traefik if you want to exercise the full stack).
+2. Launch the catalog service with `make run-local`. The `local` Spring profile points the service at `localhost` PostgreSQL and enables an in-process HS256 JWT issuer/decoder so Keycloak is not required for inner-loop work.
+3. On startup the service logs ready-to-use Bearer tokens for `admin` and `staff` roles. Copy the value after `Authorization: Bearer ...` and add it to Postman/curl requests.
+4. When routing through Traefik, make sure to keep sending the `Accept: application/vnd.bookstore.v1+json` header—Traefik now validates the JWT before forwarding traffic.

@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/catalogdb}
+    username: ${SPRING_DATASOURCE_USERNAME:catalog}
+    password: ${SPRING_DATASOURCE_PASSWORD:catalog}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    placeholders:
+      catalog_user: ${SPRING_DATASOURCE_USERNAME:catalog}
+
+logging:
+  level:
+    com.example.bookstore: DEBUG
