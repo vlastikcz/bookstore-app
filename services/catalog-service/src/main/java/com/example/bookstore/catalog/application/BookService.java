@@ -1,6 +1,5 @@
 package com.example.bookstore.catalog.application;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -22,6 +21,9 @@ public class BookService {
 
     @Transactional
     public Book create(Book book) {
+        if (book.getId() == null) {
+            book.setId(UUID.randomUUID());
+        }
         return repository.save(book);
     }
 
@@ -31,24 +33,47 @@ public class BookService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Book> findById(UUID id) {
-        return repository.findById(id);
+    public Book requireById(UUID id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new BookNotFoundException(id));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean exists(UUID id) {
+        return repository.existsById(id);
     }
 
     @Transactional
     public Book update(UUID id, Book updated) {
-        return repository.findById(id)
-                .map(existing -> applyUpdates(existing, updated))
-                .map(repository::save)
-                .orElseThrow(() -> new BookNotFoundException(id));
+        Book existing = requireById(id);
+        applyUpdates(existing, updated);
+        return repository.save(existing);
     }
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new BookNotFoundException(id);
+        Book existing = requireById(id);
+        repository.delete(existing);
+    }
+
+    @Transactional
+    public void delete(Book book) {
+        repository.delete(book);
+    }
+
+    @Transactional
+    public Book createWithId(UUID id, Book book) {
+        if (repository.existsById(id)) {
+            throw new ResourceConflictException("Book with the provided identifier already exists");
         }
-        repository.deleteById(id);
+
+        book.setId(id);
+        return repository.save(book);
+    }
+
+    @Transactional
+    public Book save(Book book) {
+        return repository.save(book);
     }
 
     private Book applyUpdates(Book existing, Book updated) {
