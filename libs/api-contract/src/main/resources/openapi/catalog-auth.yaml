@@ -1,16 +1,11 @@
 openapi: 3.0.3
 info:
-  title: V-Bookstore API
+  title: Bookstore API
   version: 1.0.0
   description: >-
-    REST API for V-Bookstore catalog and authentication services. Accept header-based
+    REST API for Bookstore catalog and authentication services. Accept header-based
     versioning follows Zalando RESTful API Guidelines. All representations are JSON encoded
     as UTF-8 and convey optimistic concurrency semantics via ETag headers.
-servers:
-  - url: https://api.vbookstore.com
-    description: Production
-  - url: https://sandbox.api.vbookstore.com
-    description: Sandbox
 tags:
   - name: Catalog
     description: Book catalog CRUD and search operations.
@@ -606,6 +601,19 @@ paths:
     put:
       tags: [Catalog]
       summary: Create or replace a book
+      description: |
+        Supports both **creation** and **replacement** flows using HTTP precondition
+        headers:
+
+        * Send `If-None-Match: *` with a new payload to create a book with the provided
+          identifier. A successful request returns **201 Created** with the new
+          representation, `Location`, and `ETag` headers.
+        * Send `If-Match: <current-etag>` to replace an existing book. A successful
+          request returns **200 OK** with the updated representation and a refreshed
+          `ETag` header.
+
+        Requests without the appropriate precondition headers fail with
+        **412 Precondition Failed**.
       operationId: putBook
       parameters:
         - $ref: '#/components/parameters/AcceptCatalog'
@@ -624,6 +632,15 @@ paths:
             schema:
               $ref: '#/components/schemas/BookCreateRequest'
       responses:
+        '200':
+          description: Updated book representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Book'
         '201':
           description: Created
           headers:

@@ -27,6 +27,7 @@
     <modules>
         <module>libs/common-domain</module>
         <module>libs/common-security</module>
+        <module>libs/api-contract</module>
         <module>services/catalog-service</module>
     </modules>
 

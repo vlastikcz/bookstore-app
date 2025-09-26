@@ -1,4 +1,4 @@
-# V-Bookstore API Guide
+# Bookstore API Guide
 
 ## Accept-Based Versioning
 - Clients supply `Accept: application/vnd.vbookstore.catalog+json;version=1` (catalog) or `Accept: application/vnd.vbookstore.auth+json;version=1`.

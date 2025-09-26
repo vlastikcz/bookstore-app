@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import static com.atlassian.oai.validator.mockmvc.OpenApiValidationMatchers.openApi;
 
 import com.example.bookstore.catalog.AbstractIntegrationTest;
 
@@ -28,11 +30,13 @@ import com.example.bookstore.catalog.AbstractIntegrationTest;
 @ActiveProfiles("test")
 class BookControllerEtagIT extends AbstractIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    private static final String OPENAPI_SPEC = "classpath:/openapi/catalog-auth.yaml";
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private MockMvc mockMvc;
 
     @Test
     void lifecycleHonoursStrongEtags() throws Exception {
@@ -47,6 +51,7 @@ class BookControllerEtagIT extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("ETag"))
                 .andExpect(header().exists("traceparent"))
+                .andExpect(openApi().isValid(OPENAPI_SPEC))
                 .andReturn();
 
         String etag = createResult.getResponse().getHeader("ETag");
@@ -55,12 +60,14 @@ class BookControllerEtagIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/books/{id}", bookId)
                         .accept(MediaType.valueOf(ApiMediaType.V1_JSON)))
                 .andExpect(status().isOk())
-                .andExpect(header().string("ETag", etag));
+                .andExpect(header().string("ETag", etag))
+                .andExpect(openApi().isValid(OPENAPI_SPEC));
 
         mockMvc.perform(get("/api/books/{id}", bookId)
                         .accept(MediaType.valueOf(ApiMediaType.V1_JSON))
                         .header("If-None-Match", etag))
-                .andExpect(status().isNotModified());
+                .andExpect(status().isNotModified())
+                .andExpect(openApi().isValid(OPENAPI_SPEC));
 
         BookPatchDto patchRequest = new BookPatchDto(BigDecimal.valueOf(61.00));
         MvcResult patchResult = mockMvc.perform(patch("/api/books/{id}", bookId)
@@ -70,6 +77,7 @@ class BookControllerEtagIT extends AbstractIntegrationTest {
                         .content(objectMapper.writeValueAsBytes(patchRequest)))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("ETag"))
+                .andExpect(openApi().isValid(OPENAPI_SPEC))
                 .andReturn();
 
         String updatedEtag = patchResult.getResponse().getHeader("ETag");
@@ -77,11 +85,13 @@ class BookControllerEtagIT extends AbstractIntegrationTest {
 
         mockMvc.perform(delete("/api/books/{id}", bookId)
                         .header("If-Match", etag))
-                .andExpect(status().isPreconditionFailed());
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(openApi().isValid(OPENAPI_SPEC));
 
         mockMvc.perform(delete("/api/books/{id}", bookId)
                         .header("If-Match", updatedEtag))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isNoContent())
+                .andExpect(openApi().isValid(OPENAPI_SPEC));
     }
 
     private record BookRequestDto(String title, String author, String genre, BigDecimal price) {

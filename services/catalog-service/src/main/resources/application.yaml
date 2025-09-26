@@ -22,6 +22,11 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8081/realms/bookstore}
+springdoc:
+  swagger-ui:
+    urls[0]:
+      url: "/openapi/catalog-auth.yaml"
+      name: Bookstore API
 
 management:
   endpoints:
