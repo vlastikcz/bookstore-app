@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,8 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.bookstore.catalog.application.BookService;
 import com.example.bookstore.catalog.application.PreconditionFailedException;
-import com.example.bookstore.catalog.application.StrongEtagGenerator;
+import com.example.bookstore.catalog.application.StrongETagGenerator;
 import com.example.bookstore.catalog.domain.Book;
+import com.example.bookstore.catalog.domain.BookSort;
 
 @RestController
 @RequestMapping(value = "/api/books", produces = ApiMediaType.V1_JSON)
@@ -34,11 +36,11 @@ import com.example.bookstore.catalog.domain.Book;
 public class BookController {
 
     private final BookService service;
-    private final StrongEtagGenerator etagGenerator;
+    private final StrongETagGenerator eTagGenerator;
 
-    public BookController(BookService service, StrongEtagGenerator etagGenerator) {
+    public BookController(BookService service, StrongETagGenerator eTagGenerator) {
         this.service = service;
-        this.etagGenerator = etagGenerator;
+        this.eTagGenerator = eTagGenerator;
     }
 
     @GetMapping(produces = ApiMediaType.V1_JSON)
@@ -49,7 +51,7 @@ public class BookController {
             @RequestParam(required = false) String genre,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("title").ascending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(BookSort.SCORE, BookSort.CREATED_AT).descending());
         Page<Book> result = service.search(title, author, genre, pageable);
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
@@ -59,27 +61,27 @@ public class BookController {
     @GetMapping(value = "/{id}", produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<BookResponse> getById(@PathVariable UUID id,
-            @RequestHeader(value = "If-None-Match", required = false) String ifNoneMatch) {
+            @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
         Book book = service.requireById(id);
-        String etag = etagGenerator.generate(book.getId(), book.getVersion());
+        String eTag = eTagGenerator.generate(book.getId(), book.getVersion());
 
-        if (EtagHeaderSupport.matches(ifNoneMatch, etag)) {
+        if (EtagHeaderSupport.matches(ifNoneMatch, eTag)) {
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
-                    .eTag(etag)
+                    .eTag(eTag)
                     .build();
         }
 
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
-                .eTag(etag)
+                .eTag(eTag)
                 .body(mapToResponse(book));
     }
 
     @PutMapping(value = "/{id}", consumes = ApiMediaType.V1_JSON, produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BookResponse> put(@PathVariable UUID id,
-            @RequestHeader(value = "If-None-Match", required = false) String ifNoneMatch,
-            @RequestHeader(value = "If-Match", required = false) String ifMatch,
+            @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
             @RequestBody @Validated BookRequest request) {
 
         Book payload = mapToEntity(request);
@@ -87,10 +89,10 @@ public class BookController {
 
         if ("*".equals(ifNoneMatch)) {
             Book created = service.createWithId(id, payload);
-            String etag = etagGenerator.generate(created.getId(), created.getVersion());
+            String eTag = eTagGenerator.generate(created.getId(), created.getVersion());
             return ResponseEntity.created(URI.create("/api/books/" + created.getId()))
                     .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
-                    .eTag(etag)
+                    .eTag(eTag)
                     .body(mapToResponse(created));
         }
 
@@ -99,27 +101,27 @@ public class BookController {
         }
 
         Book existing = service.requireById(id);
-        String currentEtag = etagGenerator.generate(existing.getId(), existing.getVersion());
-        if (!EtagHeaderSupport.matches(ifMatch, currentEtag)) {
+        String currentETag = eTagGenerator.generate(existing.getId(), existing.getVersion());
+        if (!EtagHeaderSupport.matches(ifMatch, currentETag)) {
             throw new PreconditionFailedException("If-Match header does not match the current entity tag");
         }
 
         Book updated = service.update(id, payload);
-        String etag = etagGenerator.generate(updated.getId(), updated.getVersion());
+        String eTag = eTagGenerator.generate(updated.getId(), updated.getVersion());
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
-                .eTag(etag)
+                .eTag(eTag)
                 .body(mapToResponse(updated));
     }
 
     @PatchMapping(value = "/{id}", consumes = ApiMediaType.V1_JSON, produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BookResponse> patch(@PathVariable UUID id,
-            @RequestHeader("If-Match") String ifMatch,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
             @RequestBody @Validated BookPatchRequest request) {
         Book existing = service.requireById(id);
-        String currentEtag = etagGenerator.generate(existing.getId(), existing.getVersion());
-        if (!EtagHeaderSupport.matches(ifMatch, currentEtag)) {
+        String currentETag = eTagGenerator.generate(existing.getId(), existing.getVersion());
+        if (!EtagHeaderSupport.matches(ifMatch, currentETag)) {
             throw new PreconditionFailedException("If-Match header does not match the current entity tag");
         }
 
@@ -133,20 +135,20 @@ public class BookController {
         request.priceValue().ifPresent(existing::setPrice);
 
         Book updated = service.save(existing);
-        String etag = etagGenerator.generate(updated.getId(), updated.getVersion());
+        String eTag = eTagGenerator.generate(updated.getId(), updated.getVersion());
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
-                .eTag(etag)
+                .eTag(eTag)
                 .body(mapToResponse(updated));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable UUID id,
-            @RequestHeader("If-Match") String ifMatch) {
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch) {
         Book existing = service.requireById(id);
-        String currentEtag = etagGenerator.generate(existing.getId(), existing.getVersion());
-        if (!EtagHeaderSupport.matches(ifMatch, currentEtag)) {
+        String currentETag = eTagGenerator.generate(existing.getId(), existing.getVersion());
+        if (!EtagHeaderSupport.matches(ifMatch, currentETag)) {
             throw new PreconditionFailedException("If-Match header does not match the current entity tag");
         }
 

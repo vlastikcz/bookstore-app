@@ -10,6 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.EntityManager;
@@ -17,7 +19,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 
 @Repository
-class BookRepositoryImpl implements BookRepositoryCustom {
+class BookRepositoryImpl implements BookSearchRepository {
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -25,8 +27,12 @@ class BookRepositoryImpl implements BookRepositoryCustom {
     @Value("${catalog.search.fts-config:simple}")
     private String ftsConfig;
 
+    @NonNull
     @Override
-    public Page<Book> search(String titleQuery, String authorQuery, String genreQuery, Pageable pageable) {
+    public Page<Book> search(@Nullable String titleQuery,
+                             @Nullable String authorQuery,
+                             @Nullable String genreQuery,
+                             @NonNull Pageable pageable) {
         Map<String, Object> parameters = new HashMap<>();
 
         String regConfig = toRegconfigLiteral();
@@ -100,8 +106,8 @@ class BookRepositoryImpl implements BookRepositoryCustom {
 
     private String buildOrderClause(Sort sort, String rankExpression) {
         String defaultOrder = rankExpression.equals("0")
-                ? " ORDER BY b.title ASC"
-                : " ORDER BY " + rankExpression + " DESC, b.title ASC";
+                ? " ORDER BY b.created_at DESC"
+                : " ORDER BY " + rankExpression + " DESC, b.created_at DESC";
 
         if (sort == null || sort.isUnsorted()) {
             return defaultOrder;
@@ -120,13 +126,13 @@ class BookRepositoryImpl implements BookRepositoryCustom {
         String property = order.getProperty();
 
         return switch (property) {
-            case "title" -> "b.title " + direction;
-            case "author" -> "b.author " + direction;
-            case "genre" -> "b.genre " + direction;
-            case "price" -> "b.price " + direction;
-            case "createdAt" -> "b.created_at " + direction;
-            case "updatedAt" -> "b.updated_at " + direction;
-            case "score" -> rankExpression + " " + direction;
+            case BookSort.TITLE -> "b.title " + direction;
+            case BookSort.AUTHOR -> "b.author " + direction;
+            case BookSort.GENRE -> "b.genre " + direction;
+            case BookSort.PRICE -> "b.price " + direction;
+            case BookSort.CREATED_AT -> "b.created_at " + direction;
+            case BookSort.UPDATED_AT -> "b.updated_at " + direction;
+            case BookSort.SCORE -> rankExpression.equals("0") ? "1" : rankExpression + " " + direction;
             default -> throw new IllegalArgumentException("Unsupported sort property: " + property);
         };
     }

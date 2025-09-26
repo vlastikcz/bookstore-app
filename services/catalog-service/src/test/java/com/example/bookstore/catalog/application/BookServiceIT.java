@@ -11,11 +11,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.example.bookstore.catalog.AbstractIntegrationTest;
 import com.example.bookstore.catalog.domain.Book;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class BookServiceIT {
+class BookServiceIT extends AbstractIntegrationTest {
 
     @Autowired
     private BookService service;
@@ -30,6 +31,7 @@ class BookServiceIT {
 
         Book saved = service.create(book);
         assertThat(saved.getId()).isNotNull();
+        assertThat(saved.getVersion()).isZero();
 
         Page<Book> result = service.search("Pragmatic", null, null, PageRequest.of(0, 10));
         assertThat(result.getTotalElements()).isGreaterThanOrEqualTo(1);

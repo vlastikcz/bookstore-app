@@ -1,9 +1,11 @@
 package com.example.bookstore.catalog.application;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +22,8 @@ public class BookService {
     }
 
     @Transactional
-    public Book create(Book book) {
+    public Book create(@NonNull Book book) {
+        Objects.requireNonNull(book, "book must not be null");
         if (book.getId() == null) {
             book.setId(UUID.randomUUID());
         }

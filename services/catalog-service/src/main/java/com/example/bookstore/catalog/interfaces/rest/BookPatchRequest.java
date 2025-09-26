@@ -6,14 +6,14 @@ import java.util.Optional;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BookPatchRequest(
         String title,
         String author,
         String genre,
-        @Positive BigDecimal price) {
+        @PositiveOrZero BigDecimal price) {
 
     @JsonIgnore
     public boolean isEmpty() {

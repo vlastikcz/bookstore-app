@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS books (
-    id UUID PRIMARY KEY default gen_random_uuid(),
+    id UUID PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     author VARCHAR(255) NOT NULL,
     genre VARCHAR(100) NOT NULL,

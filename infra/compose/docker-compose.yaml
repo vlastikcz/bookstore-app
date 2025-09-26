@@ -1,6 +1,6 @@
 services:
   envoy:
-    image: envoyproxy/envoy:v1.31-latest
+    image: envoyproxy/envoy:v1.35-latest
     command:
       - "envoy"
       - "-c"
@@ -46,7 +46,7 @@ services:
       - bookstore
 
   postgres:
-    image: postgres:17
+    image: postgres:18
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-catalogdb}
       POSTGRES_USER: ${POSTGRES_USER:-catalog}

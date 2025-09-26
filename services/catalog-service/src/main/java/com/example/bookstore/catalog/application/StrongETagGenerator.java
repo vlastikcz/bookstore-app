@@ -1,19 +1,22 @@
 package com.example.bookstore.catalog.application;
 
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Objects;
 import java.util.UUID;
 
 @Component
-public class StrongEtagGenerator {
+public class StrongETagGenerator {
 
     private static final String QUOTE = "\"";
 
-    public String generate(UUID resourceId, long version) {
+    @NonNull public String generate(@NonNull UUID resourceId, long version) {
+        Objects.requireNonNull(resourceId, "resourceId must not be null");
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             digest.update(resourceId.toString().getBytes(StandardCharsets.UTF_8));
