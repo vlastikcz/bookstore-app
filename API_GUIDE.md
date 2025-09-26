@@ -22,8 +22,8 @@
 - Validation errors aggregate field-level details in `violations`.
 
 ## Common Headers
-- `Trace-Id`, `Correlation-Id` propagated across services.
-- `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` exposed on throttled endpoints.
+- `traceparent` (W3C Trace Context) and optional `tracestate` propagated across services.
+- `RateLimit-Limit` exposed on throttled endpoints (standard IETF header). Remaining/reset values may be introduced later.
 - `Sunset` and `Deprecation` headers announce breaking changes.
 - Pagination uses `Link` header with `rel="next"|"prev"|"first"|"last"`.
 
@@ -95,4 +95,3 @@
 - Contract tests verifying Accept header negotiation, ETag enforcement, and error payloads.
 - Integration tests for conditional requests and optimistic locking failure scenarios.
 - Load tests for search endpoint with realistic pagination patterns.
-

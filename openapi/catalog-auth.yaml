@@ -35,16 +35,8 @@ components:
       description: Request limit for the current time window.
       schema:
         type: integer
-    RateLimit-Remaining:
-      description: Remaining requests in the current window.
-      schema:
-        type: integer
-    RateLimit-Reset:
-      description: Unix epoch seconds when the current window resets.
-      schema:
-        type: integer
-    Trace-Id:
-      description: Trace identifier propagated for observability.
+    Traceparent:
+      description: W3C Trace Context header propagated for observability.
       schema:
         type: string
   parameters:
@@ -790,10 +782,6 @@ paths:
               $ref: '#/components/headers/ETag'
             RateLimit-Limit:
               $ref: '#/components/headers/RateLimit-Limit'
-            RateLimit-Remaining:
-              $ref: '#/components/headers/RateLimit-Remaining'
-            RateLimit-Reset:
-              $ref: '#/components/headers/RateLimit-Reset'
           content:
             application/vnd.vbookstore.catalog+json;version=1:
               schema:
@@ -910,10 +898,6 @@ paths:
           headers:
             RateLimit-Limit:
               $ref: '#/components/headers/RateLimit-Limit'
-            RateLimit-Remaining:
-              $ref: '#/components/headers/RateLimit-Remaining'
-            RateLimit-Reset:
-              $ref: '#/components/headers/RateLimit-Reset'
           content:
             application/vnd.vbookstore.auth+json;version=1:
               schema:
@@ -923,10 +907,6 @@ paths:
           headers:
             RateLimit-Limit:
               $ref: '#/components/headers/RateLimit-Limit'
-            RateLimit-Remaining:
-              $ref: '#/components/headers/RateLimit-Remaining'
-            RateLimit-Reset:
-              $ref: '#/components/headers/RateLimit-Reset'
           content:
             application/problem+json:
               schema:
