@@ -42,14 +42,14 @@
 
 | Method | Path | Description | Notes |
 |--------|------|-------------|-------|
-| `PUT` | `/books/{book_id}` | Idempotent create or full replace | Requires client UUID, `If-None-Match: *` for creation or `If-Match` for replace |
-| `GET` | `/books/{book_id}` | Retrieve a single book | Supports `fields`, `include=authors,genres`, conditional GET |
-| `PATCH` | `/books/{book_id}` | Partial update (JSON Merge Patch) | Requires `If-Match`; emits domain event on success |
-| `DELETE` | `/books/{book_id}` | Delete book | Requires `If-Match`; returns `204` |
-| `GET` | `/books` | Search/list books | Filtering, sorting, pagination, optional includes |
-| `PUT` | `/books/{book_id}/inventory` | Replace inventory snapshot | Separate `ETag` per inventory representation |
-| `GET` | `/authors` | List authors | Read-only, paginated |
-| `GET` | `/genres` | List genres | Read-only, paginated |
+| `PUT` | `/api/books/{book_id}` | Idempotent create or full replace | Requires client UUID, `If-None-Match: *` for creation or `If-Match` for replace |
+| `GET` | `/api/books/{book_id}` | Retrieve a single book | Supports `If-None-Match`; conditional GET |
+| `PATCH` | `/api/books/{book_id}` | Partial update (JSON Merge Patch) | Requires `If-Match`; emits domain event on success |
+| `DELETE` | `/api/books/{book_id}` | Delete book | Requires `If-Match`; returns `204` |
+| `GET` | `/api/books` | Search/list books | Filtering, sorting, pagination, optional includes |
+| `PUT` | `/api/books/{book_id}/inventory` | Replace inventory snapshot | Separate `ETag` per inventory representation |
+| `GET` | `/api/authors` | List authors | Read-only, paginated |
+| `GET` | `/api/genres` | List genres | Read-only, paginated |
 
 ### Request/Response Patterns
 - Search responses wrap data in `{ "data": [], "meta": { ... }, "links": { ... } }`.

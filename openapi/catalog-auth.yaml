@@ -602,7 +602,7 @@ components:
         description:
           type: string
 paths:
-  /books/{book_id}:
+  /api/books/{book_id}:
     put:
       tags: [Catalog]
       summary: Create or replace a book
@@ -633,6 +633,8 @@ paths:
                 type: string
             ETag:
               $ref: '#/components/headers/ETag'
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
           content:
             application/vnd.vbookstore.catalog+json;version=1:
               schema:
@@ -676,6 +678,8 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/ETag'
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
           content:
             application/vnd.vbookstore.catalog+json;version=1:
               schema:
@@ -713,6 +717,8 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/ETag'
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
           content:
             application/vnd.vbookstore.catalog+json;version=1:
               schema:
@@ -745,6 +751,9 @@ paths:
       responses:
         '204':
           description: Deleted
+          headers:
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
         '412':
           description: Precondition failed
           content:
@@ -757,7 +766,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-  /books:
+  /api/books:
     get:
       tags: [Catalog]
       summary: Search and list books
@@ -782,11 +791,13 @@ paths:
               $ref: '#/components/headers/ETag'
             RateLimit-Limit:
               $ref: '#/components/headers/RateLimit-Limit'
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
           content:
             application/vnd.vbookstore.catalog+json;version=1:
               schema:
                 $ref: '#/components/schemas/PaginatedBooks'
-  /books/{book_id}/inventory:
+  /api/books/{book_id}/inventory:
     put:
       tags: [Catalog]
       summary: Replace inventory snapshot
@@ -813,6 +824,8 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/ETag'
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
           content:
             application/vnd.vbookstore.catalog+json;version=1:
               schema:
