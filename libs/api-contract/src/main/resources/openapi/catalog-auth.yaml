@@ -59,6 +59,7 @@ components:
         type: string
         enum:
           - application/vnd.vbookstore.catalog+json;version=1
+          - application/vnd.vbookstore.catalog+json;version=1;charset=UTF-8
     ContentTypeAuth:
       name: Content-Type
       in: header
@@ -67,6 +68,7 @@ components:
         type: string
         enum:
           - application/vnd.vbookstore.auth+json;version=1
+          - application/vnd.vbookstore.catalog+json;version=1;charset=UTF-8
     IfMatch:
       name: If-Match
       in: header
@@ -814,99 +816,6 @@ paths:
             application/vnd.vbookstore.catalog+json;version=1:
               schema:
                 $ref: '#/components/schemas/PaginatedBooks'
-  /api/books/{book_id}/inventory:
-    put:
-      tags: [Catalog]
-      summary: Replace inventory snapshot
-      operationId: putBookInventory
-      parameters:
-        - $ref: '#/components/parameters/AcceptCatalog'
-        - $ref: '#/components/parameters/ContentTypeCatalog'
-        - $ref: '#/components/parameters/IfMatch'
-        - name: book_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/vnd.vbookstore.catalog+json;version=1:
-            schema:
-              $ref: '#/components/schemas/InventorySnapshot'
-      responses:
-        '200':
-          description: Updated inventory snapshot
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-            Traceparent:
-              $ref: '#/components/headers/Traceparent'
-          content:
-            application/vnd.vbookstore.catalog+json;version=1:
-              schema:
-                $ref: '#/components/schemas/InventorySnapshot'
-        '412':
-          description: Precondition failed
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-        '404':
-          description: Not found
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-  /authors:
-    get:
-      tags: [Supporting Collections]
-      summary: List authors
-      operationId: listAuthors
-      parameters:
-        - $ref: '#/components/parameters/AcceptCatalog'
-        - $ref: '#/components/parameters/PageNumber'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Fields'
-        - name: filter[name]
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Paginated authors
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/vnd.vbookstore.catalog+json;version=1:
-              schema:
-                $ref: '#/components/schemas/PaginatedAuthors'
-  /genres:
-    get:
-      tags: [Supporting Collections]
-      summary: List genres
-      operationId: listGenres
-      parameters:
-        - $ref: '#/components/parameters/AcceptCatalog'
-        - $ref: '#/components/parameters/PageNumber'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Fields'
-        - name: filter[name]
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Paginated genres
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/vnd.vbookstore.catalog+json;version=1:
-              schema:
-                $ref: '#/components/schemas/PaginatedGenres'
   /auth/tokens:
     post:
       tags: [Authentication]

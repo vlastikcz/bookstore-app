@@ -57,10 +57,9 @@ class OpenApiContractDefinitionTest extends AbstractIntegrationTest {
                 .withFailMessage("Controller endpoints missing from OpenAPI specification: %s", undocumentedEndpoints)
                 .isEmpty();
 
-        if (!unimplementedSpecEndpoints.isEmpty()) {
-            System.out.println("OpenAPI specification contains additional book endpoints without controller implementations: "
-                    + unimplementedSpecEndpoints);
-        }
+        assertThat(unimplementedSpecEndpoints)
+                .withFailMessage("OpenAPI specification contains additional book endpoints without controller implementations: %s", unimplementedSpecEndpoints)
+                .isEmpty();
     }
 
     private Set<Endpoint> documentedBookEndpoints() throws IOException {
