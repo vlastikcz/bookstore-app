@@ -25,7 +25,7 @@ spring:
 springdoc:
   swagger-ui:
     urls[0]:
-      url: "/openapi/catalog-auth.yaml"
+      url: "/openapi/catalog-service-api.yaml"
       name: Bookstore API
 
 management:

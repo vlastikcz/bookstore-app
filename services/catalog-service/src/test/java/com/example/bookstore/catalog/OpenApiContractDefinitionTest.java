@@ -21,7 +21,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-import com.example.bookstore.catalog.interfaces.rest.BookController;
+import com.example.bookstore.catalog.book.BookController;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.parser.OpenAPIV3Parser;
@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 @ActiveProfiles("test")
 class OpenApiContractDefinitionTest extends AbstractIntegrationTest {
 
-    private static final String OPENAPI_RESOURCE = "openapi/catalog-auth.yaml";
+    private static final String OPENAPI_RESOURCE = "openapi/catalog-service-api.yaml";
 
     @Autowired
     @Qualifier("requestMappingHandlerMapping")

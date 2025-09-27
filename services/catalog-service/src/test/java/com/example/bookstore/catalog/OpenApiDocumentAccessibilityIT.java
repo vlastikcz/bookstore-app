@@ -26,10 +26,10 @@ class OpenApiDocumentAccessibilityIT extends AbstractIntegrationTest {
     @Test
     void publishedOpenApiDocumentMatchesPackagedSpecification() throws Exception {
         String expected = StreamUtils.copyToString(
-                new ClassPathResource("openapi/catalog-auth.yaml").getInputStream(),
+                new ClassPathResource("openapi/catalog-service-api.yaml").getInputStream(),
                 StandardCharsets.UTF_8);
 
-        String response = mockMvc.perform(get("/openapi/catalog-auth.yaml"))
+        String response = mockMvc.perform(get("/openapi/catalog-service-api.yaml"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()

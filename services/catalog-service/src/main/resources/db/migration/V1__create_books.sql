@@ -35,8 +35,5 @@ CREATE TABLE IF NOT EXISTS book_genres (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_book_genres_unique_genre
     ON book_genres(book_id, genre);
 
-CREATE INDEX IF NOT EXISTS idx_books_title ON books (LOWER(title));
-CREATE INDEX IF NOT EXISTS idx_authors_name ON authors (LOWER(name));
-
-CREATE INDEX IF NOT EXISTS idx_books_created_at ON books (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_authors_created_at ON authors (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_books_updated_at ON books (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_authors_updated_at ON authors (updated_at DESC);

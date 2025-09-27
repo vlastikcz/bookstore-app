@@ -1,0 +1,690 @@
+openapi: 3.0.3
+info:
+  title: Bookstore Catalog API
+  version: 1.0.0
+  description: >-
+    REST API for managing the bookstore catalog. The catalog adopts Accept header based
+    version negotiation (`application/vnd.vbookstore.catalog+json;version=1`) and uses
+    optimistic concurrency via ETag headers on single resource representations.
+tags:
+  - name: Catalog
+    description: Book catalog CRUD and search operations.
+  - name: Supporting Collections
+    description: Author lookup resources.
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  headers:
+    ETag:
+      description: Entity tag for the returned representation.
+      schema:
+        type: string
+  parameters:
+    AcceptCatalog:
+      name: Accept
+      in: header
+      required: true
+      schema:
+        type: string
+        enum:
+          - application/vnd.vbookstore.catalog+json;version=1
+    ContentTypeCatalog:
+      name: Content-Type
+      in: header
+      required: true
+      schema:
+        type: string
+        enum:
+          - application/vnd.vbookstore.catalog+json;version=1
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+    IfMatchOptional:
+      name: If-Match
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Required when replacing an existing resource.
+    IfNoneMatchStarOptional:
+      name: If-None-Match
+      in: header
+      required: false
+      schema:
+        type: string
+        enum:
+          - '*'
+      description: Send `*` to create a resource with a client supplied identifier.
+    IfNoneMatchOptional:
+      name: If-None-Match
+      in: header
+      required: false
+      schema:
+        type: string
+    PageNumber:
+      name: page[number]
+      in: query
+      description: Page index starting at 1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page[size]
+      in: query
+      description: Page size (max 100).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      description: >-
+        Comma separated sort fields. Prefix with `-` for descending. Supported fields:
+        `title`, `author`, `genre`, `price`, `createdAt`, `updatedAt`, `score`.
+      schema:
+        type: string
+    FilterTitle:
+      name: filter[title]
+      in: query
+      description: Case insensitive substring match on the book title.
+      schema:
+        type: string
+    FilterAuthor:
+      name: filter[author]
+      in: query
+      description: Case insensitive substring match on concatenated author names.
+      schema:
+        type: string
+    FilterGenres:
+      name: filter[genres]
+      in: query
+      description: Filter by one or more genre codes (logical OR).
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/BookGenre'
+  schemas:
+    Problem:
+      type: object
+      required:
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        code:
+          type: string
+        violations:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+    BookGenre:
+      type: string
+      description: Canonical genre taxonomy shared across the catalog.
+      enum:
+        - FICTION
+        - NON_FICTION
+        - MYSTERY
+        - SCIENCE_FICTION
+        - FANTASY
+        - BIOGRAPHY
+        - HISTORY
+        - CHILDREN
+        - ROMANCE
+        - SELF_HELP
+    ResourceMetadata:
+      type: object
+      required:
+        - createdAt
+        - updatedAt
+        - version
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    Book:
+      type: object
+      required:
+        - id
+        - title
+        - authors
+        - genres
+        - price
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        authors:
+          type: array
+          description: Ordered author identifiers; may be empty when authors are not assigned.
+          items:
+            type: string
+            format: uuid
+        genres:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookGenre'
+        price:
+          type: number
+          format: double
+          minimum: 0
+        metadata:
+          $ref: '#/components/schemas/ResourceMetadata'
+    BookRequest:
+      type: object
+      required:
+        - title
+        - authorIds
+        - genres
+        - price
+      properties:
+        title:
+          type: string
+        authorIds:
+          type: array
+          minItems: 0
+          items:
+            type: string
+            format: uuid
+        genres:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/BookGenre'
+        price:
+          type: number
+          format: double
+          minimum: 0
+    BookPatchRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+            format: uuid
+        genres:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookGenre'
+        price:
+          type: number
+          format: double
+          minimum: 0
+    PageMeta:
+      type: object
+      required:
+        - totalElements
+        - totalPages
+        - page
+        - size
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        page:
+          type: integer
+          description: Current page number (1-indexed).
+        size:
+          type: integer
+    BookPage:
+      type: object
+      required:
+        - content
+        - meta
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    Author:
+      type: object
+      required:
+        - id
+        - name
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ResourceMetadata'
+    AuthorRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+    AuthorPatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+    AuthorPage:
+      type: object
+      required:
+        - content
+        - meta
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Author'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+paths:
+  /api/books:
+    get:
+      tags: [Catalog]
+      summary: List books
+      operationId: listBooks
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated list of books
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/BookPage'
+  /api/books/{book_id}:
+    parameters:
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Catalog]
+      summary: Create or replace a book
+      description: |
+        Supports creation (`If-None-Match: *`) as well as replacement (`If-Match` with the
+        current entity tag). Requests that omit the appropriate precondition header result
+        in **412 Precondition Failed**.
+      operationId: putBook
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/ContentTypeCatalog'
+        - $ref: '#/components/parameters/IfNoneMatchStarOptional'
+        - $ref: '#/components/parameters/IfMatchOptional'
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.catalog+json;version=1:
+            schema:
+              $ref: '#/components/schemas/BookRequest'
+      responses:
+        '200':
+          description: Updated book representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '201':
+          description: Created
+          headers:
+            Location:
+              description: Canonical URI of the created resource.
+              schema:
+                type: string
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Book not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    get:
+      tags: [Catalog]
+      summary: Retrieve a book by identifier
+      operationId: getBook
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/IfNoneMatchOptional'
+      responses:
+        '200':
+          description: Book representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '304':
+          description: Not modified
+        '404':
+          description: Book not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags: [Catalog]
+      summary: Apply partial update to a book
+      operationId: patchBook
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/ContentTypeCatalog'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.catalog+json;version=1:
+            schema:
+              $ref: '#/components/schemas/BookPatchRequest'
+      responses:
+        '200':
+          description: Updated book representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Book not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    delete:
+      tags: [Catalog]
+      summary: Delete a book
+      operationId: deleteBook
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Book not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/book-search:
+    get:
+      tags: [Catalog]
+      summary: Search books
+      description: Search the catalog by title, author name, and genre filters.
+      operationId: searchBooks
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/FilterTitle'
+        - $ref: '#/components/parameters/FilterAuthor'
+        - $ref: '#/components/parameters/FilterGenres'
+      responses:
+        '200':
+          description: Paginated search results
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/BookPage'
+  /api/authors:
+    get:
+      tags: [Supporting Collections]
+      summary: List authors
+      operationId: listAuthors
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated list of authors
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/AuthorPage'
+  /api/authors/{author_id}:
+    parameters:
+      - name: author_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Supporting Collections]
+      summary: Create or replace an author
+      operationId: putAuthor
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/ContentTypeCatalog'
+        - $ref: '#/components/parameters/IfNoneMatchStarOptional'
+        - $ref: '#/components/parameters/IfMatchOptional'
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.catalog+json;version=1:
+            schema:
+              $ref: '#/components/schemas/AuthorRequest'
+      responses:
+        '200':
+          description: Updated author representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '201':
+          description: Author created
+          headers:
+            Location:
+              description: Canonical URI of the created author.
+              schema:
+                type: string
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Author not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Author name conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    get:
+      tags: [Supporting Collections]
+      summary: Retrieve author by identifier
+      operationId: getAuthor
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/IfNoneMatchOptional'
+      responses:
+        '200':
+          description: Author representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '304':
+          description: Not modified
+        '404':
+          description: Author not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags: [Supporting Collections]
+      summary: Update author metadata
+      operationId: patchAuthor
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/ContentTypeCatalog'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.catalog+json;version=1:
+            schema:
+              $ref: '#/components/schemas/AuthorPatchRequest'
+      responses:
+        '200':
+          description: Updated author representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Author not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    delete:
+      tags: [Supporting Collections]
+      summary: Delete author
+      operationId: deleteAuthor
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Author deleted
+        '404':
+          description: Author not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
