@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.UUID;
 
 import com.example.bookstore.catalog.common.ApiMediaType;
@@ -55,7 +56,12 @@ class BookEntityControllerETagIT extends AbstractIntegrationTest {
     @Test
     void lifecycleHonoursStrongETags() throws Exception {
         UUID bookId = UUID.randomUUID();
-        BookRequestDto createRequest = new BookRequestDto("Domain-Driven Design", "Eric Evans", "Architecture", BigDecimal.valueOf(58.00));
+        BookRequestDto createRequest = new BookRequestDto(
+                "Domain-Driven Design",
+                List.of(),
+                List.of("NON_FICTION"),
+                new PriceDto(BigDecimal.valueOf(58.00), "EUR")
+        );
         String adminBearerToken = "Bearer " + jwtTokenFactory.createAdminToken();
 
         MvcResult createResult = mockMvc.perform(put("/api/books/{id}", bookId)
@@ -87,9 +93,9 @@ class BookEntityControllerETagIT extends AbstractIntegrationTest {
                 .andExpect(status().isNotModified())
                 .andExpect(openApi().isValid(OPENAPI_SPEC));
 
-        BookPatchDto patchRequest = new BookPatchDto(BigDecimal.valueOf(61.00));
+        BookPatchDto patchRequest = new BookPatchDto(new PriceDto(BigDecimal.valueOf(61.00), "EUR"));
         MvcResult patchResult = mockMvc.perform(patch("/api/books/{id}", bookId)
-                        .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
+                        .contentType(MediaType.valueOf(ApiMediaType.MERGE_PATCH_JSON))
                         .accept(MediaType.valueOf(ApiMediaType.V1_JSON))
                         .header(HttpHeaders.AUTHORIZATION, adminBearerToken)
                         .header("If-Match", eTag)
@@ -115,9 +121,12 @@ class BookEntityControllerETagIT extends AbstractIntegrationTest {
                 .andExpect(openApi().isValid(OPENAPI_SPEC));
     }
 
-    private record BookRequestDto(String title, String author, String genre, BigDecimal price) {
+    private record BookRequestDto(String title, List<UUID> authorIds, List<String> genres, PriceDto price) {
     }
 
-    private record BookPatchDto(BigDecimal price) {
+    private record BookPatchDto(PriceDto price) {
+    }
+
+    private record PriceDto(BigDecimal amount, String currency) {
     }
 }

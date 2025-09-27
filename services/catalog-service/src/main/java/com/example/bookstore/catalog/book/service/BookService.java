@@ -7,6 +7,10 @@ import com.example.bookstore.catalog.book.domain.BookRequest;
 import com.example.bookstore.catalog.book.error.BookNotFoundException;
 import com.example.bookstore.catalog.book.repository.BookEntity;
 import com.example.bookstore.catalog.book.repository.BookRepository;
+import com.example.bookstore.catalog.common.Money;
+import com.example.bookstore.catalog.common.error.PreconditionFailedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
@@ -16,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class BookService {
+    private static final Logger log = LoggerFactory.getLogger(BookService.class);
     private final BookRepository bookRepository;
 
     public BookService(@NonNull BookRepository bookRepository) {
@@ -37,13 +42,18 @@ public class BookService {
     @Transactional
     public Book create(@Nullable UUID id, @NonNull BookRequest bookRequest) {
         Objects.requireNonNull(bookRequest, "bookRequest must not be null");
+        if (id != null && bookRepository.existsById(id)) {
+            throw new IllegalArgumentException("Book with the provided id already exists");
+        }
         BookEntity bookEntity = new BookEntity();
         bookEntity.setId(id == null ? UUID.randomUUID() : id);
         bookEntity.setTitle(bookRequest.title());
         bookEntity.setAuthors(bookRequest.authorIds().stream().distinct().toList());
         bookEntity.setGenres(bookRequest.genres());
-        bookEntity.setPrice(bookRequest.price());
-        return BookMapper.bookEntityToBook(bookRepository.save(bookEntity));
+        applyPrice(bookEntity, bookRequest.price());
+        BookEntity persisted = bookRepository.saveAndFlush(bookEntity);
+        log.info("book-service: bookId='{}' created with bookRequest='{}'", persisted.getId(), bookRequest);
+        return BookMapper.bookEntityToBook(persisted);
     }
 
     @Transactional(readOnly = true)
@@ -62,30 +72,46 @@ public class BookService {
     }
 
     @Transactional
-    public Book update(@NonNull UUID id, @NonNull BookRequest updated) {
+    public Book update(@NonNull UUID id, long expectedVersion, @NonNull BookRequest updated) {
         BookEntity existing = requireEntityById(id);
+        ensureExpectedVersion(existing, expectedVersion);
         applyUpdates(existing, updated);
-        return BookMapper.bookEntityToBook(bookRepository.save(existing));
+        BookEntity persisted = bookRepository.saveAndFlush(existing);
+        log.info("book-service: bookId='{}' updated with bookRequest='{}'", id, updated);
+        return BookMapper.bookEntityToBook(persisted);
     }
 
     @Transactional
-    public void delete(@NonNull UUID id) {
+    public void delete(@NonNull UUID id, long expectedVersion) {
         BookEntity existing = requireEntityById(id);
+        ensureExpectedVersion(existing, expectedVersion);
         bookRepository.delete(existing);
+        bookRepository.flush();
+        log.info("book-service: bookId='{}' deleted at expectedVersion='{}'", id, expectedVersion);
     }
 
     @Transactional
     public void delete(@NonNull Book book) {
-        BookEntity bookEntity = requireEntityById(book.id());
-        bookRepository.delete(bookEntity);
+        delete(book.id(), book.metadata().version());
     }
 
     private void applyUpdates(@NonNull BookEntity existing, @NonNull BookRequest updated) {
         existing.setTitle(updated.title());
-        existing.setAuthors(updated.authorIds());
         existing.setAuthors(updated.authorIds().stream().distinct().toList());
         existing.setGenres(updated.genres());
-        existing.setPrice(updated.price());
+        applyPrice(existing, updated.price());
+    }
+
+    private void applyPrice(@NonNull BookEntity entity, @NonNull Money price) {
+        entity.setPrice(price.amount());
+        entity.setPriceCurrency(price.currency());
+    }
+
+    private void ensureExpectedVersion(@NonNull BookEntity entity, long expectedVersion) {
+        if (entity.getVersion() != expectedVersion) {
+            throw new PreconditionFailedException(
+                    "Entity version mismatch. Expected %d but was %d".formatted(expectedVersion, entity.getVersion()));
+        }
     }
 
 }

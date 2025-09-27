@@ -25,8 +25,11 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
+
+import com.example.bookstore.catalog.common.Money;
 
 @Entity
 @Table(name = "books")
@@ -57,6 +60,10 @@ public class BookEntity {
     @PositiveOrZero
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
+
+    @NotBlank
+    @Column(name = "price_currency", nullable = false, length = 3)
+    private String priceCurrency;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -108,6 +115,18 @@ public class BookEntity {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public String getPriceCurrency() {
+        return priceCurrency;
+    }
+
+    public void setPriceCurrency(String priceCurrency) {
+        if (priceCurrency == null || priceCurrency.isBlank()) {
+            this.priceCurrency = Money.DEFAULT_CURRENCY;
+        } else {
+            this.priceCurrency = priceCurrency.trim().toUpperCase(Locale.ROOT);
+        }
     }
 
     public Instant getCreatedAt() {

@@ -5,16 +5,20 @@ import com.example.bookstore.catalog.author.domain.AuthorRequest;
 import com.example.bookstore.catalog.author.error.AuthorNotFoundException;
 import com.example.bookstore.catalog.author.repository.AuthorEntity;
 import com.example.bookstore.catalog.author.repository.AuthorRepository;
+import com.example.bookstore.catalog.book.domain.Book;
 import com.example.bookstore.catalog.book.domain.BookRequest;
 import com.example.bookstore.catalog.book.service.BookService;
 import com.example.bookstore.catalog.common.error.PreconditionFailedException;
 import com.example.bookstore.catalog.common.error.ResourceConflictException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -23,6 +27,7 @@ import static com.example.bookstore.catalog.author.service.AuthorMapper.authorEn
 @Service
 public class AuthorService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthorService.class);
     private final AuthorRepository repository;
     private final BookService bookService;
 
@@ -62,14 +67,17 @@ public class AuthorService {
         AuthorEntity authorEntity = new AuthorEntity();
         authorEntity.setId(id == null ? UUID.randomUUID() : id);
         authorEntity.setName(trimmed);
-        return authorEntityToAuthor(repository.save(authorEntity));
+        AuthorEntity persisted = repository.saveAndFlush(authorEntity);
+        log.info("author-service: authorId='{}' created with authorRequest='{}'", persisted.getId(), authorRequest);
+        return authorEntityToAuthor(persisted);
     }
 
     @Transactional
-    public Author update(@NonNull UUID id, AuthorRequest authorRequest) {
+    public Author update(@NonNull UUID id, long expectedVersion, AuthorRequest authorRequest) {
         Objects.requireNonNull(id, "id must not be null");
         Objects.requireNonNull(authorRequest, "authorRequest must not be null");
         AuthorEntity authorEntity = requireEntityById(id);
+        ensureExpectedVersion(authorEntity, expectedVersion);
         if (authorRequest.name() != null && !authorRequest.name().isBlank()) {
             String trimmed = authorRequest.name().trim();
             if (trimmed.isEmpty()) {
@@ -82,27 +90,43 @@ public class AuthorService {
                     });
             authorEntity.setName(trimmed);
         }
-        return authorEntityToAuthor(repository.save(authorEntity));
+        AuthorEntity persisted = repository.saveAndFlush(authorEntity);
+        log.info("author-service: authorId='{}' updated with authorRequest='{}'", id, authorRequest);
+        return authorEntityToAuthor(persisted);
     }
 
     @Transactional
-    public void delete(@NonNull UUID id) {
+    public void delete(@NonNull UUID id, long expectedVersion) {
         AuthorEntity authorEntity = requireEntityById(id);
+        ensureExpectedVersion(authorEntity, expectedVersion);
 
         repository.delete(authorEntity);
+        repository.flush();
         removeAuthorFromAllBooks(id);
+        log.info("author-service: authorId='{}' deleted", id);
     }
 
 
     private void removeAuthorFromAllBooks(UUID authorId) {
-        bookService.findByAuthor(authorId).forEach(b -> {
+        List<Book> books = bookService.findByAuthor(authorId);
+        books.forEach(b -> {
             BookRequest bookRequest = new BookRequest(
                     b.title(),
                     b.authors().stream().filter(id -> !Objects.equals(id, authorId)).toList(),
                     b.genres(),
                     b.price()
             );
-            bookService.update(b.id(), bookRequest);
+            bookService.update(b.id(), b.metadata().version(), bookRequest);
         });
+        if (!books.isEmpty()) {
+            log.info("author-service: authorId='{}' removed from '{}' books", authorId, books.size());
+        }
+    }
+
+    private void ensureExpectedVersion(@NonNull AuthorEntity entity, long expectedVersion) {
+        if (entity.getVersion() != expectedVersion) {
+            throw new PreconditionFailedException(
+                    "Entity version mismatch. Expected %d but was %d".formatted(expectedVersion, entity.getVersion()));
+        }
     }
 }

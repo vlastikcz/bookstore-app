@@ -2,6 +2,7 @@ package com.example.bookstore.catalog.book.service;
 
 import com.example.bookstore.catalog.book.domain.Book;
 import com.example.bookstore.catalog.book.repository.BookEntity;
+import com.example.bookstore.catalog.common.Money;
 import com.example.bookstore.catalog.common.ResourceMetadata;
 import org.springframework.lang.NonNull;
 
@@ -15,7 +16,7 @@ public class BookMapper {
                 bookEntity.getTitle(),
                 bookEntity.getAuthors(),
                 bookEntity.getGenres(),
-                bookEntity.getPrice(),
+                new Money(bookEntity.getPrice(), bookEntity.getPriceCurrency()),
                 new ResourceMetadata(
                         bookEntity.getCreatedAt(), bookEntity.getUpdatedAt(), bookEntity.getVersion()
                 )
@@ -28,7 +29,8 @@ public class BookMapper {
         bookEntity.setTitle(book.title());
         bookEntity.setAuthors(book.authors());
         bookEntity.setGenres(book.genres());
-        bookEntity.setPrice(book.price());
+        bookEntity.setPrice(book.price().amount());
+        bookEntity.setPriceCurrency(book.price().currency());
         bookEntity.setCreatedAt(book.metadata().createdAt());
         bookEntity.setUpdatedAt(book.metadata().updatedAt());
         bookEntity.setVersion(book.metadata().version());

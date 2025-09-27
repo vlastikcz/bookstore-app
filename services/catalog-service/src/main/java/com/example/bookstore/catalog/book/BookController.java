@@ -9,7 +9,7 @@ import com.example.bookstore.catalog.common.ApiMediaType;
 import com.example.bookstore.catalog.common.PageResponse;
 import com.example.bookstore.catalog.common.PageResponseMeta;
 import com.example.bookstore.catalog.common.error.PreconditionFailedException;
-import com.example.bookstore.catalog.common.etag.EtagHeaderSupport;
+import com.example.bookstore.catalog.common.etag.ETagHeaderSupport;
 import com.example.bookstore.catalog.common.etag.StrongETagGenerator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -79,7 +79,7 @@ public class BookController {
         Book book = bookService.requireById(id);
         String eTag = eTagGenerator.generate(book.id(), book.metadata().version());
 
-        if (EtagHeaderSupport.matches(ifNoneMatch, eTag)) {
+        if (ETagHeaderSupport.matches(ifNoneMatch, eTag)) {
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
                     .eTag(eTag)
                     .build();
@@ -98,8 +98,15 @@ public class BookController {
                                     @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
                                     @RequestBody @Validated BookRequest request) {
 
+        BookRequest normalizedRequest = new BookRequest(
+                request.title(),
+                request.authorIds(),
+                normalizeGenres(request.genres()),
+                request.price()
+        );
+
         if ("*".equals(ifNoneMatch)) {
-            Book created = bookService.create(id, request);
+            Book created = bookService.create(id, normalizedRequest);
             String eTag = eTagGenerator.generate(created.id(), created.metadata().version());
             return ResponseEntity.created(URI.create("/api/books/" + created.id()))
                     .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
@@ -113,11 +120,12 @@ public class BookController {
 
         Book existing = bookService.requireById(id);
         String currentETag = eTagGenerator.generate(existing.id(), existing.metadata().version());
-        if (!EtagHeaderSupport.matches(ifMatch, currentETag)) {
+        if (!ETagHeaderSupport.matches(ifMatch, currentETag)) {
             throw new PreconditionFailedException("If-Match header does not match the current entity tag");
         }
 
-        Book updated = bookService.update(id, request);
+        long expectedVersion = requireVersionFromIfMatch(ifMatch, existing.id());
+        Book updated = bookService.update(id, expectedVersion, normalizedRequest);
         String eTag = eTagGenerator.generate(updated.id(), updated.metadata().version());
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
@@ -125,14 +133,14 @@ public class BookController {
                 .body(updated);
     }
 
-    @PatchMapping(value = "/{id}", consumes = ApiMediaType.V1_JSON, produces = ApiMediaType.V1_JSON)
+    @PatchMapping(value = "/{id}", consumes = ApiMediaType.MERGE_PATCH_JSON, produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Book> patch(@PathVariable UUID id,
                                       @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
                                       @RequestBody @Validated BookPatchRequest request) {
         Book existing = bookService.requireById(id);
         String currentETag = eTagGenerator.generate(existing.id(), existing.metadata().version());
-        if (!EtagHeaderSupport.matches(ifMatch, currentETag)) {
+        if (!ETagHeaderSupport.matches(ifMatch, currentETag)) {
             throw new PreconditionFailedException("If-Match header does not match the current entity tag");
         }
 
@@ -140,6 +148,7 @@ public class BookController {
             throw new PreconditionFailedException("Patch request must contain at least one updatable field");
         }
 
+        long expectedVersion = requireVersionFromIfMatch(ifMatch, existing.id());
         BookRequest bookRequest = new BookRequest(
                 request.titleValue().orElse(existing.title()),
                 request.authorsValue().orElse(existing.authors()),
@@ -147,7 +156,7 @@ public class BookController {
                 request.priceValue().orElse(existing.price())
         );
 
-        Book updated = bookService.update(id, bookRequest);
+        Book updated = bookService.update(id, expectedVersion, bookRequest);
         String eTag = eTagGenerator.generate(updated.id(), updated.metadata().version());
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
@@ -161,11 +170,12 @@ public class BookController {
                                        @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch) {
         Book existing = bookService.requireById(id);
         String currentETag = eTagGenerator.generate(existing.id(), existing.metadata().version());
-        if (!EtagHeaderSupport.matches(ifMatch, currentETag)) {
+        if (!ETagHeaderSupport.matches(ifMatch, currentETag)) {
             throw new PreconditionFailedException("If-Match header does not match the current entity tag");
         }
 
-        bookService.delete(existing.id());
+        long expectedVersion = requireVersionFromIfMatch(ifMatch, existing.id());
+        bookService.delete(existing.id(), expectedVersion);
         return ResponseEntity.noContent().build();
     }
 
@@ -178,6 +188,14 @@ public class BookController {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
+    }
+
+    private long requireVersionFromIfMatch(String ifMatch, UUID resourceId) {
+        Long extracted = ETagHeaderSupport.extractVersion(ifMatch, resourceId);
+        if (extracted == null) {
+            throw new PreconditionFailedException("If-Match header must include an entity tag with version information");
+        }
+        return extracted;
     }
 
     private PageResponse<Book> mapToPageResponse(Page<Book> page) {

@@ -14,6 +14,7 @@ import com.example.bookstore.catalog.book.domain.BookGenre;
 import com.example.bookstore.catalog.book.domain.BookRequest;
 import com.example.bookstore.catalog.book.repository.BookEntity;
 import com.example.bookstore.catalog.book.service.BookService;
+import com.example.bookstore.catalog.common.Money;
 import com.example.bookstore.catalog.search.service.BookSearchService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +44,7 @@ class BookEntitySearchServiceIT extends AbstractIntegrationTest {
                 "The Pragmatic Programmer",
                 List.of(author.id()),
                 List.of(BookGenre.FICTION),
-                BigDecimal.valueOf(42.00)
+                new Money(BigDecimal.valueOf(42.00), Money.DEFAULT_CURRENCY)
         );
 
 

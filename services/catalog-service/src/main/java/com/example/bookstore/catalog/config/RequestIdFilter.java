@@ -21,8 +21,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class RequestIdFilter extends OncePerRequestFilter {
 
     private static final String TRACEPARENT = "traceparent";
-    private static final String REQUEST_ID = "X-Request-Id";
+    private static final String REQUEST_ID = "Request-Id";
     private static final Pattern TRACEPARENT_PATTERN = Pattern.compile("^[\\da-f]{2}-[\\da-f]{32}-[\\da-f]{16}-[\\da-f]{2}$");
+    private static final Pattern REQUEST_ID_PATTERN = Pattern.compile("^[\\da-f]{32}$");
     private static final SecureRandom RANDOM = new SecureRandom();
 
     @Override
@@ -37,10 +38,14 @@ public class RequestIdFilter extends OncePerRequestFilter {
         request.setAttribute(TRACEPARENT, traceparent);
         response.setHeader(TRACEPARENT, traceparent);
 
-        String traceId = extractTraceId(traceparent);
-        if (StringUtils.hasText(traceId)) {
-            request.setAttribute(REQUEST_ID, traceId);
-            response.setHeader(REQUEST_ID, traceId);
+        String requestId = normalizeRequestId(request.getHeader(REQUEST_ID));
+        if (!StringUtils.hasText(requestId)) {
+            requestId = extractTraceId(traceparent);
+        }
+
+        if (StringUtils.hasText(requestId)) {
+            request.setAttribute(REQUEST_ID, requestId);
+            response.setHeader(REQUEST_ID, requestId);
         }
 
         filterChain.doFilter(request, response);
@@ -64,6 +69,15 @@ public class RequestIdFilter extends OncePerRequestFilter {
         String traceIdHex = HexFormat.of().formatHex(traceId);
         String parentIdHex = HexFormat.of().formatHex(parentId);
         return "00-" + traceIdHex + "-" + parentIdHex + "-01";
+    }
+
+    private String normalizeRequestId(String headerValue) {
+        if (!StringUtils.hasText(headerValue)) {
+            return null;
+        }
+
+        String trimmed = headerValue.trim();
+        return REQUEST_ID_PATTERN.matcher(trimmed).matches() ? trimmed : null;
     }
 
     private String extractTraceId(String traceparent) {

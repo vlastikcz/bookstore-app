@@ -1,21 +1,21 @@
 package com.example.bookstore.catalog.book.domain;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.example.bookstore.catalog.common.Money;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.Valid;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BookPatchRequest(
         String title,
         List<UUID> authors,
         List<BookGenre> genres,
-        @PositiveOrZero BigDecimal price) {
+        @Valid Money price) {
 
     @JsonIgnore
     public boolean isEmpty() {
@@ -41,7 +41,7 @@ public record BookPatchRequest(
     }
 
     @JsonIgnore
-    public Optional<BigDecimal> priceValue() {
+    public Optional<Money> priceValue() {
         return Optional.ofNullable(price);
     }
 }

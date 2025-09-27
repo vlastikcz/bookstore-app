@@ -8,7 +8,7 @@ import com.example.bookstore.catalog.common.ApiMediaType;
 import com.example.bookstore.catalog.common.PageResponse;
 import com.example.bookstore.catalog.common.PageResponseMeta;
 import com.example.bookstore.catalog.common.error.PreconditionFailedException;
-import com.example.bookstore.catalog.common.etag.EtagHeaderSupport;
+import com.example.bookstore.catalog.common.etag.ETagHeaderSupport;
 import com.example.bookstore.catalog.common.etag.StrongETagGenerator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -89,11 +89,12 @@ public class AuthorController {
 
         Author existing = authorService.requireById(id);
         String currentETag = eTagGenerator.generate(existing.id(), existing.metadata().version());
-        if (!EtagHeaderSupport.matches(ifMatch, currentETag)) {
+        if (!ETagHeaderSupport.matches(ifMatch, currentETag)) {
             throw new PreconditionFailedException("If-Match header does not match the current entity tag");
         }
 
-        Author updated = authorService.update(id, request);
+        long expectedVersion = requireVersionFromIfMatch(ifMatch, existing.id());
+        Author updated = authorService.update(id, expectedVersion, request);
         String eTag = eTagGenerator.generate(updated.id(), updated.metadata().version());
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
@@ -108,7 +109,7 @@ public class AuthorController {
         Author author = authorService.requireById(id);
         String eTag = eTagGenerator.generate(author.id(), author.metadata().version());
 
-        if (EtagHeaderSupport.matches(ifNoneMatch, eTag)) {
+        if (ETagHeaderSupport.matches(ifNoneMatch, eTag)) {
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
                     .eTag(eTag)
                     .build();
@@ -120,14 +121,14 @@ public class AuthorController {
                 .body(author);
     }
 
-    @PatchMapping(value = "/{id}", consumes = ApiMediaType.V1_JSON, produces = ApiMediaType.V1_JSON)
+    @PatchMapping(value = "/{id}", consumes = ApiMediaType.MERGE_PATCH_JSON, produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Author> patch(@PathVariable UUID id,
                                         @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
                                         @RequestBody @Validated AuthorPatchRequest request) {
         Author existing = authorService.requireById(id);
         String currentETag = eTagGenerator.generate(existing.id(), existing.metadata().version());
-        if (!EtagHeaderSupport.matches(ifMatch, currentETag)) {
+        if (!ETagHeaderSupport.matches(ifMatch, currentETag)) {
             throw new PreconditionFailedException("If-Match header does not match the current entity tag");
         }
 
@@ -135,10 +136,11 @@ public class AuthorController {
             throw new PreconditionFailedException("Patch request must contain at least one updatable field");
         }
 
+        long expectedVersion = requireVersionFromIfMatch(ifMatch, existing.id());
         AuthorRequest authorRequest = new AuthorRequest(
                 request.nameValue().orElse(existing.name())
         );
-        Author updated = authorService.update(id, authorRequest);
+        Author updated = authorService.update(id, expectedVersion, authorRequest);
 
         String eTag = eTagGenerator.generate(updated.id(), updated.metadata().version());
         return ResponseEntity.ok()
@@ -153,12 +155,21 @@ public class AuthorController {
                                        @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch) {
         Author author = authorService.requireById(id);
         String currentETag = eTagGenerator.generate(author.id(), author.metadata().version());
-        if (!EtagHeaderSupport.matches(ifMatch, currentETag)) {
+        if (!ETagHeaderSupport.matches(ifMatch, currentETag)) {
             throw new PreconditionFailedException("If-Match header does not match the current entity tag");
         }
 
-        authorService.delete(id);
+        long expectedVersion = requireVersionFromIfMatch(ifMatch, author.id());
+        authorService.delete(id, expectedVersion);
         return ResponseEntity.noContent().build();
+    }
+
+    private long requireVersionFromIfMatch(String ifMatch, UUID resourceId) {
+        Long extracted = ETagHeaderSupport.extractVersion(ifMatch, resourceId);
+        if (extracted == null) {
+            throw new PreconditionFailedException("If-Match header must include an entity tag with version information");
+        }
+        return extracted;
     }
 
     private PageResponse<Author> mapToPageResponse(Page<Author> page) {

@@ -16,3 +16,5 @@ spring:
 logging:
   level:
     com.example.bookstore: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
