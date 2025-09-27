@@ -1,12 +1,10 @@
 package com.example.bookstore.catalog.interfaces.rest;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -21,14 +19,14 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.bookstore.catalog.application.AuthorService;
 import com.example.bookstore.catalog.application.BookService;
 import com.example.bookstore.catalog.application.PreconditionFailedException;
 import com.example.bookstore.catalog.application.StrongETagGenerator;
 import com.example.bookstore.catalog.domain.Book;
-import com.example.bookstore.catalog.domain.BookSort;
+import com.example.bookstore.catalog.domain.GenreCode;
 
 @RestController
 @RequestMapping(value = "/api/books", produces = ApiMediaType.V1_JSON)
@@ -37,25 +35,17 @@ public class BookController {
 
     private final BookService service;
     private final StrongETagGenerator eTagGenerator;
+    private final AuthorService authorService;
+    private final BookRepresentationMapper bookRepresentationMapper;
 
-    public BookController(BookService service, StrongETagGenerator eTagGenerator) {
+    public BookController(BookService service,
+            StrongETagGenerator eTagGenerator,
+            AuthorService authorService,
+            BookRepresentationMapper bookRepresentationMapper) {
         this.service = service;
         this.eTagGenerator = eTagGenerator;
-    }
-
-    @GetMapping(produces = ApiMediaType.V1_JSON)
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    public ResponseEntity<PageResponse<BookResponse>> search(
-            @RequestParam(required = false) String title,
-            @RequestParam(required = false) String author,
-            @RequestParam(required = false) String genre,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(BookSort.SCORE, BookSort.CREATED_AT).descending());
-        Page<Book> result = service.search(title, author, genre, pageable);
-        return ResponseEntity.ok()
-                .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
-                .body(mapToPageResponse(result));
+        this.authorService = authorService;
+        this.bookRepresentationMapper = bookRepresentationMapper;
     }
 
     @GetMapping(value = "/{id}", produces = ApiMediaType.V1_JSON)
@@ -74,7 +64,7 @@ public class BookController {
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
                 .eTag(eTag)
-                .body(mapToResponse(book));
+                .body(bookRepresentationMapper.toResponse(book));
     }
 
     @PutMapping(value = "/{id}", consumes = ApiMediaType.V1_JSON, produces = ApiMediaType.V1_JSON)
@@ -93,7 +83,7 @@ public class BookController {
             return ResponseEntity.created(URI.create("/api/books/" + created.getId()))
                     .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
                     .eTag(eTag)
-                    .body(mapToResponse(created));
+                    .body(bookRepresentationMapper.toResponse(created));
         }
 
         if (ifMatch == null || ifMatch.isBlank()) {
@@ -111,7 +101,7 @@ public class BookController {
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
                 .eTag(eTag)
-                .body(mapToResponse(updated));
+                .body(bookRepresentationMapper.toResponse(updated));
     }
 
     @PatchMapping(value = "/{id}", consumes = ApiMediaType.V1_JSON, produces = ApiMediaType.V1_JSON)
@@ -130,8 +120,8 @@ public class BookController {
         }
 
         request.titleValue().ifPresent(existing::setTitle);
-        request.authorValue().ifPresent(existing::setAuthor);
-        request.genreValue().ifPresent(existing::setGenre);
+        request.authorIdsValue().ifPresent(ids -> existing.setAuthors(authorService.resolveAuthorsInOrder(ids)));
+        request.genresValue().ifPresent(genres -> existing.setGenres(normalizeGenres(genres)));
         request.priceValue().ifPresent(existing::setPrice);
 
         Book updated = service.save(existing);
@@ -139,7 +129,7 @@ public class BookController {
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
                 .eTag(eTag)
-                .body(mapToResponse(updated));
+                .body(bookRepresentationMapper.toResponse(updated));
     }
 
     @DeleteMapping("/{id}")
@@ -159,29 +149,20 @@ public class BookController {
     private Book mapToEntity(BookRequest request) {
         Book book = new Book();
         book.setTitle(request.title());
-        book.setAuthor(request.author());
-        book.setGenre(request.genre());
+        book.setAuthors(authorService.resolveAuthorsInOrder(request.authorIds()));
+        book.setGenres(normalizeGenres(request.genres()));
         book.setPrice(request.price());
         return book;
     }
 
-    private BookResponse mapToResponse(Book book) {
-        return new BookResponse(
-                book.getId(),
-                book.getTitle(),
-                book.getAuthor(),
-                book.getGenre(),
-                book.getPrice(),
-                book.getCreatedAt(),
-                book.getUpdatedAt());
-    }
+    private List<GenreCode> normalizeGenres(List<GenreCode> genres) {
+        if (genres == null || genres.isEmpty()) {
+            return List.of();
+        }
 
-    private PageResponse<BookResponse> mapToPageResponse(Page<Book> page) {
-        return new PageResponse<>(
-                page.map(this::mapToResponse).getContent(),
-                page.getTotalElements(),
-                page.getTotalPages(),
-                page.getNumber(),
-                page.getSize());
+        return genres.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 }

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.example.bookstore.catalog.application.AuthorNotFoundException;
 import com.example.bookstore.catalog.application.BookNotFoundException;
 import com.example.bookstore.catalog.application.PreconditionFailedException;
 import com.example.bookstore.catalog.application.ResourceConflictException;
@@ -29,8 +30,8 @@ public class RestExceptionHandler {
         this.clock = clock;
     }
 
-    @ExceptionHandler(BookNotFoundException.class)
-    public ResponseEntity<SimpleErrorResponse> handleBookNotFound(BookNotFoundException ex) {
+    @ExceptionHandler({BookNotFoundException.class, AuthorNotFoundException.class})
+    public ResponseEntity<SimpleErrorResponse> handleResourceNotFound(RuntimeException ex) {
         SimpleErrorResponse response = new SimpleErrorResponse(
                 Instant.now(clock),
                 HttpStatus.NOT_FOUND.value(),

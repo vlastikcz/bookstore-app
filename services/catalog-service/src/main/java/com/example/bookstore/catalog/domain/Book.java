@@ -1,9 +1,18 @@
 package com.example.bookstore.catalog.domain;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
@@ -15,6 +24,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -30,13 +41,19 @@ public class Book {
     @Column(nullable = false)
     private String title;
 
-    @NotBlank
-    @Column(nullable = false)
-    private String author;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "book_authors",
+            joinColumns = @JoinColumn(name = "book_id"),
+            inverseJoinColumns = @JoinColumn(name = "author_id"))
+    @OrderColumn(name = "author_order")
+    private List<Author> authors = new ArrayList<>();
 
-    @NotBlank
-    @Column(nullable = false)
-    private String genre;
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "book_genres", joinColumns = @JoinColumn(name = "book_id"))
+    @Column(name = "genre", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @OrderColumn(name = "genre_order")
+    private List<GenreCode> genres = new ArrayList<>();
 
     @NotNull
     @PositiveOrZero
@@ -71,20 +88,20 @@ public class Book {
         this.title = title;
     }
 
-    public String getAuthor() {
-        return author;
+    public List<Author> getAuthors() {
+        return authors;
     }
 
-    public void setAuthor(String author) {
-        this.author = author;
+    public void setAuthors(List<Author> authors) {
+        this.authors = authors == null ? new ArrayList<>() : new ArrayList<>(authors);
     }
 
-    public String getGenre() {
-        return genre;
+    public List<GenreCode> getGenres() {
+        return genres;
     }
 
-    public void setGenre(String genre) {
-        this.genre = genre;
+    public void setGenres(List<GenreCode> genres) {
+        this.genres = genres == null ? new ArrayList<>() : new ArrayList<>(genres);
     }
 
     public BigDecimal getPrice() {

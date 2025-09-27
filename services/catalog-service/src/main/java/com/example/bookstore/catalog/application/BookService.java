@@ -1,5 +1,6 @@
 package com.example.bookstore.catalog.application;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.bookstore.catalog.domain.Book;
 import com.example.bookstore.catalog.domain.BookRepository;
+import com.example.bookstore.catalog.domain.GenreCode;
 
 @Service
 public class BookService {
@@ -27,12 +29,14 @@ public class BookService {
         if (book.getId() == null) {
             book.setId(UUID.randomUUID());
         }
+        validateRelations(book);
         return repository.save(book);
     }
 
     @Transactional(readOnly = true)
-    public Page<Book> search(String title, String author, String genre, Pageable pageable) {
-        return repository.search(normalizeQuery(title), normalizeQuery(author), normalizeQuery(genre), pageable);
+    public Page<Book> search(String title, String author, List<GenreCode> genres, Pageable pageable) {
+        List<GenreCode> genreFilters = genres == null ? List.of() : genres;
+        return repository.search(normalizeQuery(title), normalizeQuery(author), genreFilters, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -48,6 +52,7 @@ public class BookService {
 
     @Transactional
     public Book update(UUID id, Book updated) {
+        validateRelations(updated);
         Book existing = requireById(id);
         applyUpdates(existing, updated);
         return repository.save(existing);
@@ -71,18 +76,20 @@ public class BookService {
         }
 
         book.setId(id);
+        validateRelations(book);
         return repository.save(book);
     }
 
     @Transactional
     public Book save(Book book) {
+        validateRelations(book);
         return repository.save(book);
     }
 
     private Book applyUpdates(Book existing, Book updated) {
         existing.setTitle(updated.getTitle());
-        existing.setAuthor(updated.getAuthor());
-        existing.setGenre(updated.getGenre());
+        existing.setAuthors(updated.getAuthors());
+        existing.setGenres(updated.getGenres());
         existing.setPrice(updated.getPrice());
         return existing;
     }
@@ -98,5 +105,14 @@ public class BookService {
         }
 
         return trimmed;
+    }
+
+    private void validateRelations(Book book) {
+        if (book.getAuthors() == null) {
+            book.setAuthors(List.of());
+        }
+        if (book.getGenres() == null) {
+            book.setGenres(List.of());
+        }
     }
 }

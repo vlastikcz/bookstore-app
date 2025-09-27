@@ -43,3 +43,4 @@ staff/staff
 - `db/migration/V2__add_fulltext_indexes.sql` creates a combined GIN index using the `simple` dictionary (language-agnostic) plus trigram indexes for fuzzy matching.
 - Ranking uses `ts_rank_cd` with field weighting and defaults to score-desc, title-asc ordering. Clients can request alternative sorting via the usual pageable `sort` parameter; a special `score` key exposes the relevance rank.
 - The dictionary can be overridden with `catalog.search.fts-config` if you need language-specific stemming (for example `english`, `czech`, etc.).
+- `gin_trgm_ops` for similarlity search 

@@ -136,12 +136,16 @@ components:
       description: Case-insensitive substring match over author name.
       schema:
         type: string
-    FilterGenre:
-      name: filter[genre]
+    FilterGenres:
+      name: filter[genres]
       in: query
-      description: Filter by genre identifier or slug.
+      description: Filter by one or more genre codes.
+      style: form
+      explode: true
       schema:
-        type: string
+        type: array
+        items:
+          $ref: '#/components/schemas/GenreCode'
     FilterPriceGt:
       name: filter[price][gt]
       in: query
@@ -196,22 +200,6 @@ components:
         currency:
           type: string
           pattern: '^[A-Z]{3}$'
-    InventorySnapshot:
-      type: object
-      required:
-        - on_hand
-        - status
-      properties:
-        on_hand:
-          type: integer
-          minimum: 0
-        status:
-          type: string
-          enum:
-            - IN_STOCK
-            - LOW_STOCK
-            - OUT_OF_STOCK
-            - PREORDER
     AuthorRef:
       type: object
       required:
@@ -223,17 +211,20 @@ components:
           format: uuid
         name:
           type: string
-    GenreRef:
-      type: object
-      required:
-        - genre_id
-        - name
-      properties:
-        genre_id:
-          type: string
-          format: uuid
-        name:
-          type: string
+    GenreCode:
+      type: string
+      description: Canonical genre taxonomy shared across the catalog.
+      enum:
+        - FICTION
+        - NON_FICTION
+        - MYSTERY
+        - SCIENCE_FICTION
+        - FANTASY
+        - BIOGRAPHY
+        - HISTORY
+        - CHILDREN
+        - ROMANCE
+        - SELF_HELP
     Book:
       type: object
       required:
@@ -256,26 +247,19 @@ components:
           nullable: true
         authors:
           type: array
+          description: Ordered author identifiers; may be empty when authors are not yet assigned.
           items:
-            $ref: '#/components/schemas/AuthorRef'
+            type: string
+            format: uuid
+          uniqueItems: true
         genres:
           type: array
+          description: Zero or more genres describing the book's content.
           items:
-            $ref: '#/components/schemas/GenreRef'
+            $ref: '#/components/schemas/GenreCode'
+          uniqueItems: true
         price:
           $ref: '#/components/schemas/Money'
-        inventory:
-          $ref: '#/components/schemas/InventorySnapshot'
-        isbn_10:
-          type: string
-          nullable: true
-        isbn_13:
-          type: string
-          nullable: true
-        published_at:
-          type: string
-          format: date
-          nullable: true
         created_at:
           type: string
           format: date-time
@@ -306,11 +290,14 @@ components:
         authors:
           type: array
           items:
-            $ref: '#/components/schemas/AuthorRef'
+            type: string
+            format: uuid
+          uniqueItems: true
         genres:
           type: array
           items:
-            $ref: '#/components/schemas/GenreRef'
+            $ref: '#/components/schemas/GenreCode'
+          uniqueItems: true
         price:
           $ref: '#/components/schemas/Money'
         inventory:
@@ -374,51 +361,34 @@ components:
       required:
         - author_id
         - name
+        - created_at
+        - updated_at
       properties:
         author_id:
           type: string
           format: uuid
         name:
           type: string
+          description: Display name for the author.
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
-        _links:
-          type: object
-          additionalProperties:
-            type: object
-            properties:
-              href:
-                type: string
-                format: uri
     Genre:
       type: object
       required:
-        - genre_id
-        - name
+        - code
+        - display_name
       properties:
-        genre_id:
+        code:
+          $ref: '#/components/schemas/GenreCode'
+        display_name:
           type: string
-          format: uuid
-        name:
+        description:
           type: string
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        _links:
-          type: object
-          additionalProperties:
-            type: object
-            properties:
-              href:
-                type: string
-                format: uri
+          nullable: true
     PaginatedAuthors:
       type: object
       required:
@@ -467,6 +437,20 @@ components:
             prev:
               type: string
               nullable: true
+    AuthorCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 255
+    AuthorPatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
     TokenResponse:
       type: object
       required:
@@ -785,11 +769,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-  /api/books:
+  /api/search/books:
     get:
       tags: [Catalog]
-      summary: Search and list books
-      operationId: listBooks
+      summary: Full-text book search
+      description: Search the catalog by title, author name, genre, or price filters. This endpoint is designed for future extraction into a standalone search service.
+      operationId: searchBooks
       parameters:
         - $ref: '#/components/parameters/AcceptCatalog'
         - $ref: '#/components/parameters/PageNumber'
@@ -799,12 +784,12 @@ paths:
         - $ref: '#/components/parameters/Include'
         - $ref: '#/components/parameters/FilterTitle'
         - $ref: '#/components/parameters/FilterAuthor'
-        - $ref: '#/components/parameters/FilterGenre'
+        - $ref: '#/components/parameters/FilterGenres'
         - $ref: '#/components/parameters/FilterPriceGt'
         - $ref: '#/components/parameters/FilterPriceLt'
       responses:
         '200':
-          description: Paginated list of books
+          description: Paginated search results
           headers:
             ETag:
               $ref: '#/components/headers/ETag'
@@ -816,6 +801,171 @@ paths:
             application/vnd.vbookstore.catalog+json;version=1:
               schema:
                 $ref: '#/components/schemas/PaginatedBooks'
+  /api/authors:
+    get:
+      tags: [Supporting Collections]
+      summary: List authors
+      operationId: listAuthors
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated list of authors
+          headers:
+            RateLimit-Limit:
+              $ref: '#/components/headers/RateLimit-Limit'
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuthors'
+    post:
+      tags: [Supporting Collections]
+      summary: Create an author
+      operationId: createAuthor
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/ContentTypeCatalog'
+      requestBody:
+        required: true
+        content:
+          application/vnd.vbookstore.catalog+json;version=1:
+            schema:
+              $ref: '#/components/schemas/AuthorCreateRequest'
+      responses:
+        '201':
+          description: Author created
+          headers:
+            Location:
+              description: Canonical URI of the newly created author resource.
+              schema:
+                type: string
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '409':
+          description: Author with the same name already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/authors/{author_id}:
+    get:
+      tags: [Supporting Collections]
+      summary: Retrieve author by identifier
+      operationId: getAuthor
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/IfNoneMatchOptional'
+        - name: author_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Author representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '304':
+          description: Not modified
+        '404':
+          description: Author not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags: [Supporting Collections]
+      summary: Update author metadata
+      operationId: patchAuthor
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/ContentTypeCatalog'
+        - $ref: '#/components/parameters/IfMatch'
+        - name: author_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/AuthorPatchRequest'
+      responses:
+        '200':
+          description: Updated author representation
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
+          content:
+            application/vnd.vbookstore.catalog+json;version=1:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Author not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    delete:
+      tags: [Supporting Collections]
+      summary: Delete author
+      operationId: deleteAuthor
+      parameters:
+        - $ref: '#/components/parameters/AcceptCatalog'
+        - $ref: '#/components/parameters/IfMatch'
+        - name: author_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Author deleted
+          headers:
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
+        '412':
+          description: Precondition failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Author not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /auth/tokens:
     post:
       tags: [Authentication]
