@@ -139,6 +139,14 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/BookGenre'
+    Embed:
+      name: embed
+      in: query
+      description: >-
+        Comma separated list of related resources to embed into the primary representation.
+        Supported values: `authors`.
+      schema:
+        type: string
   schemas:
     Problem:
       type: object
@@ -242,6 +250,9 @@ components:
           $ref: '#/components/schemas/Money'
         metadata:
           $ref: '#/components/schemas/ResourceMetadata'
+        _embedded:
+          $ref: '#/components/schemas/BookEmbedded'
+          description: Present when `embed=authors` is requested.
     BookRequest:
       type: object
       required:
@@ -361,6 +372,15 @@ components:
             $ref: '#/components/schemas/BookSearchItem'
         meta:
           $ref: '#/components/schemas/PageMeta'
+    BookEmbedded:
+      type: object
+      properties:
+        authors:
+          type: array
+          description: Embedded author representations as requested via `embed=authors`.
+          items:
+            $ref: '#/components/schemas/Author'
+      additionalProperties: false
     Author:
       type: object
       required:
@@ -410,6 +430,7 @@ paths:
         - $ref: '#/components/parameters/TraceparentOptional'
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Embed'
       responses:
         '200':
           description: Paginated list of books
@@ -522,6 +543,7 @@ paths:
         - $ref: '#/components/parameters/AcceptCatalog'
         - $ref: '#/components/parameters/TraceparentOptional'
         - $ref: '#/components/parameters/IfNoneMatchOptional'
+        - $ref: '#/components/parameters/Embed'
       responses:
         '200':
           description: Book representation

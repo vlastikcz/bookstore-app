@@ -18,6 +18,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -45,6 +46,17 @@ public class AuthorService {
     @Transactional(readOnly = true)
     public Author requireById(@NonNull UUID id) {
         return authorEntityToAuthor(requireEntityById(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Author> findAllByIds(@NonNull Collection<UUID> ids) {
+        Objects.requireNonNull(ids, "ids must not be null");
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return repository.findAllById(ids).stream()
+                .map(AuthorMapper::authorEntityToAuthor)
+                .toList();
     }
 
     private AuthorEntity requireEntityById(UUID id) {

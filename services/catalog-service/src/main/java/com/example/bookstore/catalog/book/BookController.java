@@ -1,9 +1,12 @@
 package com.example.bookstore.catalog.book;
 
+import com.example.bookstore.catalog.book.api.BookEmbedOption;
+import com.example.bookstore.catalog.book.api.BookResource;
 import com.example.bookstore.catalog.book.domain.Book;
 import com.example.bookstore.catalog.book.domain.BookGenre;
 import com.example.bookstore.catalog.book.domain.BookPatchRequest;
 import com.example.bookstore.catalog.book.domain.BookRequest;
+import com.example.bookstore.catalog.book.service.BookQueryService;
 import com.example.bookstore.catalog.book.service.BookService;
 import com.example.bookstore.catalog.common.ApiMediaType;
 import com.example.bookstore.catalog.common.PageResponse;
@@ -34,6 +37,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -44,19 +48,23 @@ import java.util.UUID;
 public class BookController {
 
     private final BookService bookService;
+    private final BookQueryService bookQueryService;
     private final StrongETagGenerator eTagGenerator;
 
     public BookController(@NonNull BookService bookService,
+                          @NonNull BookQueryService bookQueryService,
                           @NonNull StrongETagGenerator eTagGenerator) {
         this.bookService = bookService;
+        this.bookQueryService = bookQueryService;
         this.eTagGenerator = eTagGenerator;
     }
 
     @GetMapping(produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    public ResponseEntity<PageResponse<Book>> list(
+    public ResponseEntity<PageResponse<BookResource>> list(
             @RequestParam(name = "page[number]", defaultValue = "1") int pageNumber,
-            @RequestParam(name = "page[size]", defaultValue = "20") int pageSize) {
+            @RequestParam(name = "page[size]", defaultValue = "20") int pageSize,
+            @RequestParam(name = "embed", required = false) List<String> embed) {
 
         int resolvedPageNumber = Math.max(pageNumber, 1) - 1;
         int resolvedPageSize = pageSize < 1 ? 20 : Math.min(pageSize, 100);
@@ -66,7 +74,8 @@ public class BookController {
                 Sort.by("updatedAt").ascending()
         );
 
-        Page<Book> books = bookService.list(pageable);
+        EnumSet<BookEmbedOption> embedOptions = BookEmbedOption.fromQueryParameters(embed);
+        Page<BookResource> books = bookQueryService.list(pageable, embedOptions);
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
                 .body(mapToPageResponse(books));
@@ -74,9 +83,11 @@ public class BookController {
 
     @GetMapping(value = "/{id}", produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    public ResponseEntity<Book> getById(@PathVariable UUID id,
-                                        @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
-        Book book = bookService.requireById(id);
+    public ResponseEntity<BookResource> getById(@PathVariable UUID id,
+                                                @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch,
+                                                @RequestParam(name = "embed", required = false) List<String> embed) {
+        EnumSet<BookEmbedOption> embedOptions = BookEmbedOption.fromQueryParameters(embed);
+        BookResource book = bookQueryService.requireById(id, embedOptions);
         String eTag = eTagGenerator.generate(book.id(), book.metadata().version());
 
         if (ETagHeaderSupport.matches(ifNoneMatch, eTag)) {
@@ -198,7 +209,7 @@ public class BookController {
         return extracted;
     }
 
-    private PageResponse<Book> mapToPageResponse(Page<Book> page) {
+    private <T> PageResponse<T> mapToPageResponse(Page<T> page) {
         return new PageResponse<>(
                 page.getContent(),
                 new PageResponseMeta(

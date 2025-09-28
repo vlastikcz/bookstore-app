@@ -1,7 +1,5 @@
 package com.example.bookstore.catalog.book.service;
 
-import java.util.*;
-
 import com.example.bookstore.catalog.book.domain.Book;
 import com.example.bookstore.catalog.book.domain.BookRequest;
 import com.example.bookstore.catalog.book.error.BookNotFoundException;
@@ -17,6 +15,10 @@ import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 @Service
 public class BookService {

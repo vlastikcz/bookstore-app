@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.example.bookstore.catalog.author.error.AuthorNotFoundException;
 import com.example.bookstore.catalog.book.error.BookNotFoundException;
+import com.example.bookstore.catalog.book.error.InvalidEmbedParameterException;
 
 @RestControllerAdvice
 public class RestExceptionHandler {
@@ -37,7 +38,8 @@ public class RestExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
-    @ExceptionHandler({PreconditionFailedException.class, ResourceConflictException.class})
+    @ExceptionHandler({PreconditionFailedException.class, ResourceConflictException.class,
+            InvalidEmbedParameterException.class})
     public ResponseEntity<SimpleErrorResponse> handlePreconditionFailures(ResponseStatusException ex) {
         SimpleErrorResponse response = new SimpleErrorResponse(
                 Instant.now(clock),

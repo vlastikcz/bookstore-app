@@ -44,9 +44,9 @@ public class BookSearchRepository {
         String regConfig = toRegconfigLiteral();
         String titleDocument = String.format("setweight(to_tsvector(%s, coalesce(b.title, '')), 'A')", regConfig);
         String authorDocument = String.format("setweight(to_tsvector(%s, coalesce((SELECT string_agg(a.name, ' ') FROM authors a "
-                + "JOIN book_authors ba2 ON a.id = ba2.author_id WHERE ba2.book_id = b.id ORDER BY ba2.author_order), '')), 'B')", regConfig);
-        String genreDocument = String.format("setweight(to_tsvector(%s, coalesce((SELECT string_agg(bg.genre, ' ') FROM book_genres bg "
-                + "WHERE bg.book_id = b.id ORDER BY bg.genre_order), '')), 'C')", regConfig);
+                + "JOIN book_authors ba2 ON a.id = ba2.author_id WHERE ba2.book_id = b.id ORDER BY ba2.author_order), '')), 'B')",
+                regConfig
+        );
 
         List<String> predicates = new ArrayList<>();
         List<String> rankComponents = new ArrayList<>();
