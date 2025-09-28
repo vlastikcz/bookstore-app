@@ -1,12 +1,12 @@
 package com.example.bookstore.catalog.search;
 
-import com.example.bookstore.catalog.book.domain.Book;
 import com.example.bookstore.catalog.book.domain.BookGenre;
 import com.example.bookstore.catalog.book.domain.BookSort;
 import com.example.bookstore.catalog.common.ApiMediaType;
 import com.example.bookstore.catalog.common.PageResponse;
 import com.example.bookstore.catalog.common.PageResponseMeta;
 import com.example.bookstore.catalog.common.error.PreconditionFailedException;
+import com.example.bookstore.catalog.search.domain.BookSearchResult;
 import com.example.bookstore.catalog.search.service.BookSearchService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,7 +38,7 @@ public class BookSearchController {
 
     @GetMapping(produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    public ResponseEntity<PageResponse<Book>> searchBooks(
+    public ResponseEntity<PageResponse<BookSearchItemResponse>> searchBooks(
             @RequestParam(name = "filter[title]", required = false) String title,
             @RequestParam(name = "filter[author]", required = false) String author,
             @RequestParam(name = "filter[genres]", required = false) List<BookGenre> genres,
@@ -51,7 +51,7 @@ public class BookSearchController {
 
         Sort resolvedSort = resolveSort(sort);
         Pageable pageable = PageRequest.of(resolvedPageNumber, resolvedPageSize, resolvedSort);
-        Page<Book> result = bookSearchService.search(title, author, normalizeGenres(genres), pageable);
+        Page<BookSearchResult> result = bookSearchService.search(title, author, normalizeGenres(genres), pageable);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(ApiMediaType.V1_JSON))
@@ -108,9 +108,11 @@ public class BookSearchController {
                 .toList();
     }
 
-    public PageResponse<Book> toPageResponse(Page<Book> page) {
+    public PageResponse<BookSearchItemResponse> toPageResponse(Page<BookSearchResult> page) {
         return new PageResponse<>(
-                page.getContent(),
+                page.getContent().stream()
+                        .map(BookSearchItemResponse::fromResult)
+                        .toList(),
                 new PageResponseMeta(
                         page.getTotalElements(),
                         page.getTotalPages(),

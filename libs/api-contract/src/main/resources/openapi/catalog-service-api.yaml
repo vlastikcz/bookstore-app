@@ -299,6 +299,14 @@ components:
           description: Current page number (1-indexed).
         size:
           type: integer
+    Link:
+      type: object
+      required:
+        - href
+      properties:
+        href:
+          type: string
+          format: uri
     BookPage:
       type: object
       required:
@@ -309,6 +317,48 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Book'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    BookSearchItem:
+      type: object
+      required:
+        - id
+        - title
+        - authors
+        - _links
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        authors:
+          type: array
+          description: Ordered list of author display names.
+          items:
+            type: string
+        score:
+          type: number
+          format: double
+          nullable: true
+          description: Optional relevance score from the search backend.
+        _links:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              $ref: '#/components/schemas/Link'
+    BookSearchPage:
+      type: object
+      required:
+        - content
+        - meta
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookSearchItem'
         meta:
           $ref: '#/components/schemas/PageMeta'
     Author:
@@ -627,7 +677,7 @@ paths:
           content:
             application/vnd.vbookstore.catalog+json;version=1:
               schema:
-                $ref: '#/components/schemas/BookPage'
+                $ref: '#/components/schemas/BookSearchPage'
   /api/authors:
     get:
       tags: [Supporting Collections]
