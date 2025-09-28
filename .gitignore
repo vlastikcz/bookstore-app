@@ -18,6 +18,3 @@ infra/compose/postgres-data/
 
 # VSCode
 .vscode/
-
-# Maven
-.mvn/

@@ -9,13 +9,20 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BookPatchRequest(
-        String title,
-        List<UUID> authors,
-        List<BookGenre> genres,
+        @Size(max = 255) String title,
+        @Size(max = 20) List<@NotNull UUID> authors,
+        @Size(max = 20) List<@NotNull BookGenre> genres,
         @Valid Money price) {
+
+    public BookPatchRequest {
+        authors = authors == null ? null : List.copyOf(authors);
+        genres = genres == null ? null : List.copyOf(genres);
+    }
 
     @JsonIgnore
     public boolean isEmpty() {

@@ -102,40 +102,54 @@ public class BookSearchRepository {
     }
 
     private List<String> extractAuthorNames(Object column) {
-        if (column == null) {
-            return List.of();
-        }
-
-        if (column instanceof Array sqlArray) {
-            try {
-                Object array = sqlArray.getArray();
+        switch (column) {
+            case null -> {
+                return List.of();
+            }
+            case Array sqlArray -> {
                 try {
-                    if (array instanceof String[] stringArray) {
-                        return Arrays.stream(stringArray)
-                                .filter(Objects::nonNull)
-                                .map(String::trim)
-                                .filter(s -> !s.isEmpty())
-                                .toList();
+                    Object array = sqlArray.getArray();
+                    try {
+                        return mapObjectArray(array);
+                    } finally {
+                        sqlArray.free();
                     }
-                    if (array instanceof Object[] objectArray) {
-                        return Arrays.stream(objectArray)
-                                .filter(Objects::nonNull)
-                                .map(Object::toString)
-                                .map(String::trim)
-                                .filter(s -> !s.isEmpty())
-                                .toList();
-                    }
-                    return List.of(array.toString());
-                } finally {
-                    sqlArray.free();
+                } catch (SQLException e) {
+                    throw new IllegalStateException("Failed to read author names", e);
                 }
-            } catch (SQLException e) {
-                throw new IllegalStateException("Failed to read author names", e);
+            }
+            case String[] stringArray -> {
+                return Arrays.stream(stringArray)
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+            }
+            case Object[] objectArray -> {
+                return mapObjectArray(objectArray);
+            }
+            case List<?> list -> {
+                return list.stream()
+                        .filter(Objects::nonNull)
+                        .map(Object::toString)
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+            }
+            default -> {
             }
         }
 
-        if (column instanceof List<?> list) {
-            return list.stream()
+        return Optional.of(column.toString())
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(List::of)
+                .orElse(List.of());
+    }
+
+    private List<String> mapObjectArray(Object array) {
+        if (array instanceof Object[] objectArray) {
+            return Arrays.stream(objectArray)
                     .filter(Objects::nonNull)
                     .map(Object::toString)
                     .map(String::trim)
@@ -143,7 +157,13 @@ public class BookSearchRepository {
                     .toList();
         }
 
-        return Optional.of(column.toString())
+        if (array instanceof String value) {
+            String trimmed = value.trim();
+            return trimmed.isEmpty() ? List.of() : List.of(trimmed);
+        }
+
+        return Optional.ofNullable(array)
+                .map(Object::toString)
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .map(List::of)
@@ -185,10 +205,9 @@ public class BookSearchRepository {
         }
 
         String tsQuery = String.format("websearch_to_tsquery(%s, :%s)", regConfig, paramName);
-        String document = documentExpression;
 
-        predicates.add(document + " @@ " + tsQuery);
-        rankComponents.add("ts_rank_cd(" + document + ", " + tsQuery + ")");
+        predicates.add(documentExpression + " @@ " + tsQuery);
+        rankComponents.add("ts_rank_cd(" + documentExpression + ", " + tsQuery + ")");
         parameters.put(paramName, sanitizedValue);
     }
 

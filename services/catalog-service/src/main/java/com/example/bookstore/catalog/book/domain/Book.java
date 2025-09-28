@@ -13,4 +13,9 @@ public record Book(
         List<BookGenre> genres,
         Money price,
         ResourceMetadata metadata) {
+
+    public Book {
+        authors = authors == null ? List.of() : List.copyOf(authors);
+        genres = genres == null ? List.of() : List.copyOf(genres);
+    }
 }

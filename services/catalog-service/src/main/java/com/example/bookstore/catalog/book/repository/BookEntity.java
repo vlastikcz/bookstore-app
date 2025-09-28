@@ -17,6 +17,7 @@ import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -40,7 +41,8 @@ public class BookEntity {
     private UUID id;
 
     @NotBlank
-    @Column(nullable = false)
+    @Size(max = 255)
+    @Column(nullable = false, length = 255)
     private String title;
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -62,6 +64,7 @@ public class BookEntity {
     private BigDecimal price;
 
     @NotBlank
+    @Size(min = 3, max = 3)
     @Column(name = "price_currency", nullable = false, length = 3)
     private String priceCurrency;
 
@@ -94,7 +97,7 @@ public class BookEntity {
     }
 
     public List<UUID> getAuthors() {
-        return authors;
+        return List.copyOf(authors);
     }
 
     public void setAuthors(List<UUID> authors) {
@@ -102,7 +105,7 @@ public class BookEntity {
     }
 
     public List<BookGenre> getGenres() {
-        return genres;
+        return List.copyOf(genres);
     }
 
     public void setGenres(List<BookGenre> genres) {

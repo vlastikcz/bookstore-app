@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build & Test
+  build-and-verify:
+    name: Build & Verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -33,5 +33,5 @@ jobs:
           path: ~/.m2/repository/org/owasp/dependency-check-data
           key: ${{ runner.os }}-dependency-check-data
 
-      - name: Build with Maven
-        run: ./mvnw -B -ntp verify
+      - name: Verify with Maven
+        run: ./mvnw -B -ntp clean verify -DnvdApiKey=${{secrets.nvdApiKey}}

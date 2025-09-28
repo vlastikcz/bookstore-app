@@ -30,6 +30,10 @@ public class TestJwtTokenFactory {
         return createToken("admin", List.of("ADMIN"));
     }
 
+    public String createStaffToken() {
+        return createToken("staff", List.of("STAFF"));
+    }
+
     public String createToken(String subject, Collection<String> roles) {
         Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         JwtClaimsSet claims = JwtClaimsSet.builder()

@@ -13,6 +13,10 @@ public record BookSearchItemResponse(
         Double score,
         @JsonProperty("_links") Links links) {
 
+    public BookSearchItemResponse {
+        authors = authors == null ? List.of() : List.copyOf(authors);
+    }
+
     public static BookSearchItemResponse fromResult(BookSearchResult result) {
         return new BookSearchItemResponse(
                 result.id(),

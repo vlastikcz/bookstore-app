@@ -14,6 +14,12 @@ import com.example.bookstore.common.security.KeycloakRealmRoleConverter;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final ProblemAccessDeniedHandler accessDeniedHandler;
+
+    public SecurityConfig(ProblemAccessDeniedHandler accessDeniedHandler) {
+        this.accessDeniedHandler = accessDeniedHandler;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -22,6 +28,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**", "/openapi/**").permitAll()
                         .anyRequest().authenticated())
+                .exceptionHandling(ex -> ex
+                        .accessDeniedHandler(accessDeniedHandler))
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 

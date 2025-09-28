@@ -21,6 +21,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -39,18 +45,15 @@ public class BookSearchController {
     @GetMapping(produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<PageResponse<BookSearchItemResponse>> searchBooks(
-            @RequestParam(name = "filter[title]", required = false) String title,
-            @RequestParam(name = "filter[author]", required = false) String author,
-            @RequestParam(name = "filter[genres]", required = false) List<BookGenre> genres,
-            @RequestParam(name = "page[number]", defaultValue = "1") int pageNumber,
-            @RequestParam(name = "page[size]", defaultValue = "20") int pageSize,
-            @RequestParam(name = "sort", required = false) String sort) {
-
-        int resolvedPageNumber = Math.max(pageNumber, 1) - 1;
-        int resolvedPageSize = pageSize < 1 ? 20 : Math.min(pageSize, 100);
+            @RequestParam(name = "filter[title]", required = false) @Size(max = 255) String title,
+            @RequestParam(name = "filter[author]", required = false) @Size(max = 255) String author,
+            @RequestParam(name = "filter[genres]", required = false) @Size(max = 20) List<@NotNull BookGenre> genres,
+            @RequestParam(name = "page[number]", defaultValue = "1") @Min(1) int pageNumber,
+            @RequestParam(name = "page[size]", defaultValue = "20") @Min(1) @Max(100) int pageSize,
+            @RequestParam(name = "sort", required = false) @Size(max = 255) @Pattern(regexp = "^[A-Za-z0-9_,\\-\\s]*$") String sort) {
 
         Sort resolvedSort = resolveSort(sort);
-        Pageable pageable = PageRequest.of(resolvedPageNumber, resolvedPageSize, resolvedSort);
+        Pageable pageable = PageRequest.of(pageNumber - 1, pageSize, resolvedSort);
         Page<BookSearchResult> result = bookSearchService.search(title, author, normalizeGenres(genres), pageable);
 
         return ResponseEntity.ok()

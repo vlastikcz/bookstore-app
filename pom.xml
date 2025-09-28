@@ -23,16 +23,17 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven-checkstyle-plugin.version>3.5.0</maven-checkstyle-plugin.version>
         <checkstyle.version>11.0.1</checkstyle.version>
-        <checkstyle.config.location>${maven.multiModuleProjectDirectory}/config/checkstyle/checkstyle.xml</checkstyle.config.location>
+        <checkstyle.config.location>${maven.multiModuleProjectDirectory}/config/checkstyle/checkstyle.xml
+        </checkstyle.config.location>
         <spotbugs-maven-plugin.version>4.9.6.0</spotbugs-maven-plugin.version>
         <spotbugs.version>4.9.6</spotbugs.version>
         <dependency-check-maven.version>12.1.6</dependency-check-maven.version>
-        <testcontainers.version>1.21.3</testcontainers.version>
         <springdoc-openapi.version>2.8.13</springdoc-openapi.version>
+        <swagger-request-validator.version>2.46.0</swagger-request-validator.version>
+        <swagger-parser.version>2.1.34</swagger-parser.version>
     </properties>
 
     <modules>
-        <module>libs/common-domain</module>
         <module>libs/common-security</module>
         <module>libs/api-contract</module>
         <module>services/catalog-service</module>
@@ -41,17 +42,28 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers-bom</artifactId>
-                <version>${testcontainers.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc-openapi.version}</version>
             </dependency>
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>${springdoc-openapi.version}</version>
-        </dependency>
+            <dependency>
+                <groupId>com.atlassian.oai</groupId>
+                <artifactId>swagger-request-validator-core</artifactId>
+                <version>${swagger-request-validator.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.atlassian.oai</groupId>
+                <artifactId>swagger-request-validator-mockmvc</artifactId>
+                <version>${swagger-request-validator.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.swagger.parser.v3</groupId>
+                <artifactId>swagger-parser</artifactId>
+                <version>${swagger-parser.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -81,7 +93,8 @@
                 <version>${maven-checkstyle-plugin.version}</version>
                 <configuration>
                     <configLocation>${checkstyle.config.location}</configLocation>
-                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <inputEncoding>${project.build.sourceEncoding}</inputEncoding>
+                    <outputEncoding>${project.build.sourceEncoding}</outputEncoding>
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>true</failsOnError>
                 </configuration>
@@ -109,7 +122,6 @@
                 <configuration>
                     <effort>Max</effort>
                     <threshold>Medium</threshold>
-                    <spotbugsXmlOutput>true</spotbugsXmlOutput>
                     <failOnError>true</failOnError>
                 </configuration>
                 <executions>

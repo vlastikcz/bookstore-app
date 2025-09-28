@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -24,7 +25,8 @@ public class AuthorEntity {
     private UUID id;
 
     @NotBlank
-    @Column(nullable = false, unique = true)
+    @Size(max = 255)
+    @Column(nullable = false, unique = true, length = 255)
     private String name;
 
     @CreatedDate

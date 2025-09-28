@@ -34,8 +34,8 @@ public class AuthorService {
 
     public AuthorService(@NonNull AuthorRepository repository,
                          @NonNull BookService bookService) {
-        this.repository = repository;
-        this.bookService = bookService;
+        this.repository = Objects.requireNonNull(repository, "repository must not be null");
+        this.bookService = Objects.requireNonNull(bookService, "bookService must not be null");
     }
 
     @Transactional(readOnly = true)

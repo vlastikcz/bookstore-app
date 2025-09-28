@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -28,8 +29,8 @@ public class RequestIdFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain) throws ServletException, IOException {
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
         String traceparent = normalizeTraceparent(request.getHeader(TRACEPARENT));
         if (!StringUtils.hasText(traceparent)) {
             traceparent = generateTraceparent();

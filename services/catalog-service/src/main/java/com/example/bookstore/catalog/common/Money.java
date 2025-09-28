@@ -4,13 +4,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.util.Locale;
 import java.util.Objects;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record Money(@NotNull @PositiveOrZero BigDecimal amount, @NotNull String currency) {
+public record Money(@NotNull @PositiveOrZero BigDecimal amount, @NotNull @Size(min = 3, max = 3) String currency) {
 
     public static final String DEFAULT_CURRENCY = "EUR";
 

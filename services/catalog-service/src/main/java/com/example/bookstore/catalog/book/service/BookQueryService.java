@@ -29,8 +29,8 @@ public class BookQueryService {
 
     public BookQueryService(@NonNull BookService bookService,
                             @NonNull AuthorService authorService) {
-        this.bookService = bookService;
-        this.authorService = authorService;
+        this.bookService = Objects.requireNonNull(bookService, "bookService must not be null");
+        this.authorService = Objects.requireNonNull(authorService, "authorService must not be null");
     }
 
     @Transactional(readOnly = true)

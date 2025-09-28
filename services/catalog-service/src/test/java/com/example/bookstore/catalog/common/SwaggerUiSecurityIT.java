@@ -1,4 +1,4 @@
-package com.example.bookstore.catalog.interfaces.rest;
+package com.example.bookstore.catalog.common;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;

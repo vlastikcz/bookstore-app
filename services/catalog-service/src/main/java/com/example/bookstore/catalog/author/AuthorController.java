@@ -31,7 +31,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+
 import java.net.URI;
+import java.util.Objects;
 import java.util.UUID;
 
 @RestController
@@ -43,21 +47,19 @@ public class AuthorController {
     private final StrongETagGenerator eTagGenerator;
 
     public AuthorController(AuthorService authorService, StrongETagGenerator eTagGenerator) {
-        this.authorService = authorService;
-        this.eTagGenerator = eTagGenerator;
+        this.authorService = Objects.requireNonNull(authorService, "authorService must not be null");
+        this.eTagGenerator = Objects.requireNonNull(eTagGenerator, "eTagGenerator must not be null");
     }
 
     @GetMapping(produces = ApiMediaType.V1_JSON)
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ResponseEntity<PageResponse<Author>> list(
-            @RequestParam(name = "page[number]", defaultValue = "1") int pageNumber,
-            @RequestParam(name = "page[size]", defaultValue = "20") int pageSize) {
+            @RequestParam(name = "page[number]", defaultValue = "1") @Min(1) int pageNumber,
+            @RequestParam(name = "page[size]", defaultValue = "20") @Min(1) @Max(100) int pageSize) {
 
-        int resolvedPageNumber = Math.max(pageNumber, 1) - 1;
-        int resolvedPageSize = pageSize < 1 ? 20 : Math.min(pageSize, 100);
         Pageable pageable = PageRequest.of(
-                resolvedPageNumber,
-                resolvedPageSize,
+                pageNumber - 1,
+                pageSize,
                 Sort.by("updatedAt").ascending()
         );
 

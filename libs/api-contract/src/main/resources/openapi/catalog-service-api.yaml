@@ -41,10 +41,20 @@ components:
       name: Accept
       in: header
       required: true
+      description: |
+        Clients MUST advertise the catalog media type for successful responses and SHOULD also
+        include `application/problem+json` (typically with a lower quality factor) so that
+        contract errors and other problem documents can be returned without triggering content
+        negotiation failures.
       schema:
         type: string
-        enum:
-          - application/vnd.vbookstore.catalog+json;version=1
+      examples:
+        recommended:
+          summary: Requests that accept catalog resources and RFC7807 problems
+          value: application/vnd.vbookstore.catalog+json;version=1, application/problem+json;q=0.9
+        minimal:
+          summary: Requests that only accept catalog resources
+          value: application/vnd.vbookstore.catalog+json;version=1
     ContentTypeCatalog:
       name: Content-Type
       in: header
@@ -117,18 +127,22 @@ components:
         `title`, `author`, `genre`, `price`, `createdAt`, `updatedAt`, `score`.
       schema:
         type: string
+        maxLength: 255
+        pattern: '^[-A-Za-z0-9_,\\s]*$'
     FilterTitle:
       name: filter[title]
       in: query
       description: Case insensitive substring match on the book title.
       schema:
         type: string
+        maxLength: 255
     FilterAuthor:
       name: filter[author]
       in: query
       description: Case insensitive substring match on concatenated author names.
       schema:
         type: string
+        maxLength: 255
     FilterGenres:
       name: filter[genres]
       in: query
@@ -137,6 +151,7 @@ components:
       explode: true
       schema:
         type: array
+        maxItems: 20
         items:
           $ref: '#/components/schemas/BookGenre'
     Embed:
@@ -145,8 +160,16 @@ components:
       description: >-
         Comma separated list of related resources to embed into the primary representation.
         Supported values: `authors`.
+      style: form
+      explode: false
       schema:
-        type: string
+        type: array
+        maxItems: 50
+        items:
+          type: string
+          enum:
+            - authors
+          maxLength: 255
   schemas:
     Problem:
       type: object
@@ -236,14 +259,17 @@ components:
           format: uuid
         title:
           type: string
+          maxLength: 255
         authors:
           type: array
           description: Ordered author identifiers; may be empty when authors are not assigned.
+          maxItems: 20
           items:
             type: string
             format: uuid
         genres:
           type: array
+          maxItems: 20
           items:
             $ref: '#/components/schemas/BookGenre'
         price:
@@ -263,15 +289,16 @@ components:
       properties:
         title:
           type: string
+          maxLength: 255
         authorIds:
           type: array
-          minItems: 0
+          maxItems: 20
           items:
             type: string
             format: uuid
         genres:
           type: array
-          minItems: 0
+          maxItems: 20
           items:
             $ref: '#/components/schemas/BookGenre'
         price:
@@ -281,13 +308,16 @@ components:
       properties:
         title:
           type: string
+          maxLength: 255
         authors:
           type: array
+          maxItems: 20
           items:
             type: string
             format: uuid
         genres:
           type: array
+          maxItems: 20
           items:
             $ref: '#/components/schemas/BookGenre'
         price:
@@ -343,11 +373,14 @@ components:
           format: uuid
         title:
           type: string
+          maxLength: 255
         authors:
           type: array
           description: Ordered list of author display names.
+          maxItems: 20
           items:
             type: string
+            maxLength: 255
         score:
           type: number
           format: double
@@ -378,6 +411,7 @@ components:
         authors:
           type: array
           description: Embedded author representations as requested via `embed=authors`.
+          maxItems: 20
           items:
             $ref: '#/components/schemas/Author'
       additionalProperties: false
@@ -393,6 +427,7 @@ components:
           format: uuid
         name:
           type: string
+          maxLength: 255
         metadata:
           $ref: '#/components/schemas/ResourceMetadata'
     AuthorRequest:
@@ -402,11 +437,13 @@ components:
       properties:
         name:
           type: string
+          maxLength: 255
     AuthorPatchRequest:
       type: object
       properties:
         name:
           type: string
+          maxLength: 255
     AuthorPage:
       type: object
       required:
@@ -504,6 +541,17 @@ paths:
                 $ref: '#/components/schemas/Book'
         '400':
           description: Validation error
+          headers:
+            Traceparent:
+              $ref: '#/components/headers/Traceparent'
+            RequestId:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Authenticated caller lacks the required role.
           headers:
             Traceparent:
               $ref: '#/components/headers/Traceparent'
