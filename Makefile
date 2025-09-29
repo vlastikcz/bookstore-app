@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 COMPOSE_FILE := infra/compose/docker-compose.yaml
 
-.PHONY: run-local run-stack stop test clean
+.PHONY: run-local run-stack stop verify test clean
 
 run-local:
 	./mvnw spring-boot:run -Dspring-boot.run.profiles=local
@@ -13,8 +13,10 @@ run-stack:
 stop:
 	docker compose -f $(COMPOSE_FILE) down
 
-test:
+verify:
 	./mvnw verify
+
+test: verify
 
 clean:
 	./mvnw clean

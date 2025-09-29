@@ -28,6 +28,6 @@ future of the project and the consequences of your decisions.
 	o Set up a database to store book information.
 	o Define appropriate tables and relationships (e.g., Book, Author, Genre).
 
-## More resources:
-- API contract: libs/api-contract/src/main/resources/openapi/catalog-service-api.yaml
-- Developer-facing summary: API_GUIDE.md
+## Reference material
+- API contract: `libs/api-contract/src/main/resources/openapi/catalog-service-api.yaml`
+- Developer-facing API guide: `API_GUIDE.md`

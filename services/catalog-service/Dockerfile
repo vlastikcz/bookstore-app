@@ -4,7 +4,7 @@ FROM maven:3.9.11-amazoncorretto-25 AS build
 WORKDIR /workspace
 
 COPY pom.xml /workspace/
-COPY libs/common-domain/pom.xml /workspace/libs/common-domain/
+COPY libs/api-contract/pom.xml /workspace/libs/api-contract/
 COPY libs/common-security/pom.xml /workspace/libs/common-security/
 COPY services/catalog-service/pom.xml /workspace/services/catalog-service/
 
@@ -20,5 +20,5 @@ WORKDIR /app
 
 COPY --from=build /workspace/services/catalog-service/target/catalog-service-*.jar /app/app.jar
 
-EXPOSE 8080
+EXPOSE 8880
 ENTRYPOINT ["java","-jar","/app/app.jar"]

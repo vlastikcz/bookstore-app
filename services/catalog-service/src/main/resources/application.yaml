@@ -1,8 +1,10 @@
+server:
+  port: 8880
 spring:
   application:
     name: catalog-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/catalogdb}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5433/catalogdb}
     username: ${SPRING_DATASOURCE_USERNAME:catalog}
     password: ${SPRING_DATASOURCE_PASSWORD:catalog}
     driver-class-name: org.postgresql.Driver
@@ -21,7 +23,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8081/realms/bookstore}
+          issuer-uri: ${SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:8881/realms/bookstore}
 springdoc:
   swagger-ui:
     urls[0]:

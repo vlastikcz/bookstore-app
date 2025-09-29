@@ -1,6 +1,6 @@
 # Bookstore App
 
-Demo application that establishes a minimal but realistic foundation for a future-ready bookstore platform. It proves the core workflow (CRUD + search) while demonstrating architecture choices that support rapid growth and regulated environments.
+Demo application that establishes a minimal but realistic foundation for a future-ready bookstore platform.
 
 ## Technology
 
@@ -15,8 +15,8 @@ Demo application that establishes a minimal but realistic foundation for a futur
 
 ## Quick start guide
 
-Requirements: Java 25
-Recommended: Docker Compose, `make`
+ - Requirements: Java 25
+ - Recommended: Docker Compose, `make`
 
 ### Local development
 
@@ -24,18 +24,18 @@ Recommended: Docker Compose, `make`
    - PostgreSQL is required – `docker compose -f infra/compose/docker-compose.yaml up postgres`
    - Add `envoy` and `keycloak` containers if you want to exercise the full stack.
 2. Launch the catalog service with `make run-local`. The `local` profile aims at `localhost` PostgreSQL and enables an in-process HS256 JWT issuer/decoder, so Keycloak is optional for inner-loop work.
-3. On startup the service [logs](services/catalog-service/src/main/java/com/example/bookstore/catalog/config/LocalSecurityConfig.java) ready-to-use Bearer tokens for `admin` and `staff`. Copy the value after `Authorization: Bearer …` and attach it to curl requests or [Swagger UI](http://localhost:8080/swagger-ui/index.html).
+3. On startup the service [logs](services/catalog-service/src/main/java/com/example/bookstore/catalog/config/LocalSecurityConfig.java) ready-to-use Bearer tokens for `admin` and `staff`. Copy the value after `Authorization: Bearer …` and attach it to curl requests or [Swagger UI](http://localhost:8880/swagger-ui/index.html).
 4. Run the contract, unit, and integration test suite with `make verify`.
 
 ### Production-like deployment
 
-Run `make run-stack` to launch Envoy, Keycloak, PostgreSQL, and the catalog service behind the gateway. Manage demo accounts and secrets via `.env` (see `infra/compose/.env.example`).
+Run `make run-stack` to launch Envoy, Keycloak, PostgreSQL, and the catalog service behind the gateway. Manage demo accounts and secrets via `.env` (see [infra/compose/.env.example](infra/compose/.env.example) and [infra/compose/keycloak/bookstore-realm.json](infra/compose/keycloak/bookstore-realm.json)).
 
 > Heads-up: Docker Compose uses bridge networking to simplify development. This also exposes debug surfaces (for example the Envoy admin port) to the host machine; harden or disable when demoing outside a controlled environment.
 
 ### Links
 
-After start, open [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html).
+After start, open [http://localhost:8880/swagger-ui/index.html](http://localhost:8880/swagger-ui/index.html).
 
 ## Features
 
@@ -47,8 +47,8 @@ After start, open [http://localhost:8080/swagger-ui/index.html](http://localhost
 
 ### Non functional
 - API Gateway – Separates ingress concerns from the service. Supports future decomposition without breaking client contracts.
-- Identity and access management – Swappable Keycloak today, AWS Cognito/Azure AD tomorrow because the service only relies on JWT claims.
-- Concurrency control – Standard HTTP mechanisms (`ETag`, `If-Match`, `If-None-Match`) protect against lost updates in collaborative back-office use.
+- Identity and access management – Built with Keycloak, but can be migrated to AWS Cognito as needed.
+- Concurrency control – Standard HTTP mechanisms (`ETag`, `If-Match`, `If-None-Match`) protect against lost updates in concurrent environment.
 - Search boundary – Lightweight search resource models stable, index-friendly attributes. Keeps the door open for OpenSearch or external indexers driven by domain events when query demands grow.
 
 ## Development guidelines
@@ -60,16 +60,14 @@ After start, open [http://localhost:8080/swagger-ui/index.html](http://localhost
 
 ## Limitations
 
-- Secret management via `.env` files – Production would move to AWS Secrets Manager / Vault with automated rotation.
+- Secret management via `.env` files 
+  - Production would move to AWS Secrets Manager / Vault with automated rotation.
+  - Strict least privilege for services accessing secrets; separate roles for read vs. rotate.
+  - Audit logging of secret access (Vault audit device or AWS CloudTrail).
 - Observability and monitoring
   - Compose stack uses container health checks only.
   - Production should add centralized logging with alerts, metrics (OpenTelemetry + Prometheus/Grafana or CloudWatch, DataDog), and cost monitoring hooks.
-
-- **Policies**:
-    - Strict least privilege for services accessing secrets; separate roles for read vs. rotate.
-    - Audit logging of secret access (Vault audit device or AWS CloudTrail).
-    - Rotate database credentials and tokens regularly (e.g., every 90 days) with automation pipelines.
-
+  
 ### Evolution Path
 - **Short Term**: Single service for CRUD/search keeps operational overhead low while delivering required functionality.
 - **Medium Term**: Introduce event-driven read models (OpenSearch, DynamoDB) when query load or feature complexity increases.

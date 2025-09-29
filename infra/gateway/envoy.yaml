@@ -4,7 +4,7 @@ static_resources:
       address:
         socket_address:
           address: 0.0.0.0
-          port_value: 8080
+          port_value: 8880
       filter_chains:
         - filters:
             - name: envoy.filters.network.http_connection_manager
@@ -77,6 +77,11 @@ static_resources:
                             cluster: catalog_service
                             timeout: 0s
                         - match:
+                            prefix: "/openapi"
+                          route:
+                            cluster: catalog_service
+                            timeout: 0s
+                        - match:
                             prefix: "/v3/api-docs"
                           route:
                             cluster: catalog_service
@@ -107,10 +112,10 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
                       providers:
                         keycloak:
-                          issuer: "http://keycloak:8080/realms/bookstore"
+                          issuer: "http://keycloak:8880/realms/bookstore"
                           remote_jwks:
                             http_uri:
-                              uri: "http://keycloak:8080/realms/bookstore/protocol/openid-connect/certs"
+                              uri: "http://keycloak:8880/realms/bookstore/protocol/openid-connect/certs"
                               cluster: keycloak_jwks
                               timeout: 5s
                           payload_in_metadata: "jwt"
@@ -155,7 +160,7 @@ static_resources:
                   address:
                     socket_address:
                       address: catalog-service
-                      port_value: 8080
+                      port_value: 8880
     - name: keycloak_service
       connect_timeout: 1s
       type: STRICT_DNS
@@ -168,7 +173,7 @@ static_resources:
                   address:
                     socket_address:
                       address: keycloak
-                      port_value: 8080
+                      port_value: 8880
     - name: keycloak_jwks
       connect_timeout: 1s
       type: STRICT_DNS
@@ -181,7 +186,7 @@ static_resources:
                   address:
                     socket_address:
                       address: keycloak
-                      port_value: 8080
+                      port_value: 8880
 admin:
   access_log_path: /tmp/admin_access.log
   address:

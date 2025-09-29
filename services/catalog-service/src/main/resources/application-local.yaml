@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/catalogdb}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/catalogdb}
     username: ${SPRING_DATASOURCE_USERNAME:catalog}
     password: ${SPRING_DATASOURCE_PASSWORD:catalog}
     driver-class-name: org.postgresql.Driver
