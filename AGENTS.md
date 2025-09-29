@@ -1,6 +1,6 @@
-Bookstore Inventory Management System
+# Bookstore Inventory Management System
 
-Overview:
+## Overview:
 
 You are in the role of a contractor who designs and develops the first version of the Bookstore
 Inventory Management System for a customer. The Bookstore Inventory Management System
@@ -12,7 +12,7 @@ Approach the project as a real task that you are doing for a real customer. Thin
 future of the project and the consequences of your decisions.
 
 
-Key Features:
+##  Key Features:
 1. Book CRUD Operations [REST API]:
 	o Add new books with details like title, author, genre, and price.
 	o Update existing book information.
@@ -27,3 +27,7 @@ Key Features:
 4. Database:
 	o Set up a database to store book information.
 	o Define appropriate tables and relationships (e.g., Book, Author, Genre).
+
+## More resources:
+- API contract: libs/api-contract/src/main/resources/openapi/catalog-service-api.yaml
+- Developer-facing summary: API_GUIDE.md

@@ -1,46 +1,91 @@
-# BOOKSTORE-APP
+# Bookstore App
 
-Principles - demo application ready for rapid growth. Simple and minimal, but open for simple extension.
+Demo application that establishes a minimal but realistic foundation for a future-ready bookstore platform. It proves the core workflow (CRUD + search) while demonstrating architecture choices that support rapid growth and regulated environments.
 
-Book Catalog service - uses Postgresql for storage and the fulltext search capabilities. This should fully fullfill the current requirements. It can run in many instances if needed, or required for uninterrupted deployment. 
+## Technology
 
-If the indexing or search becomes a bottle neck, a separate search service can be implemented. Such service could be implemented for example with OpenSearch, and consume Catalog events (for example via SNS). Intial sync could be done with a batch job.
+ - Spring Boot
+ - Vertical modules to keep domain, application, and infrastructure concerns isolated per feature
+ - Contract first via [catalog-service-api.yaml](libs/api-contract/src/main/resources/openapi/catalog-service-api.yaml)
+ - Versioned REST API compliant with [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/)
+ - PostgreSQL for persistence and full-text search (`websearch` queries)
+ - Identity and access management with Keycloak-issued JWTs (HS256 for local profile, RS256 via Envoy in stack mode)
+ - Envoy API Gateway with JWT validation, request tracing, rate limiting, and `Accept` header-based routing
+   - See also [API_GUIDE.md](API_GUIDE.md)
 
-If separate indexing service would exist, cost saving could be considered by moving the primary storage from PostgreSQL to some schemaless db, such as DynamoDB. But this would be a bigger change - but a tradeoff between initial complexity and costs by inclusing separate indexing service from the start, vs leaving it out and adding only if/when needed.
+## Quick start guide
 
-The Catalog is ready for publishing Event also for other purposes or if new requirements arise.
+Requirements: Java 25
+Recommended: Docker Compose, `make`
 
-An API gateway was implemented using **Envoy** to allow easier service management and development. It handles public API routing, applies rate limiting, validates JWTs against Keycloak, and keeps room for advanced migrations (for example API versioning based on the `Accept` header), while the catalog service still performs its own validation for defense in depth.
+### Local development
 
-Authentication was implemented using Keycloak.
+1. Start the infrastructure dependencies.
+   - PostgreSQL is required – `docker compose -f infra/compose/docker-compose.yaml up postgres`
+   - Add `envoy` and `keycloak` containers if you want to exercise the full stack.
+2. Launch the catalog service with `make run-local`. The `local` profile aims at `localhost` PostgreSQL and enables an in-process HS256 JWT issuer/decoder, so Keycloak is optional for inner-loop work.
+3. On startup the service [logs](services/catalog-service/src/main/java/com/example/bookstore/catalog/config/LocalSecurityConfig.java) ready-to-use Bearer tokens for `admin` and `staff`. Copy the value after `Authorization: Bearer …` and attach it to curl requests or [Swagger UI](http://localhost:8080/swagger-ui/index.html).
+4. Run the contract, unit, and integration test suite with `make verify`.
 
-Secret management was implemented naively - in production it should use Consul or similar.
+### Production-like deployment
+
+Run `make run-stack` to launch Envoy, Keycloak, PostgreSQL, and the catalog service behind the gateway. Manage demo accounts and secrets via `.env` (see `infra/compose/.env.example`).
+
+> Heads-up: Docker Compose uses bridge networking to simplify development. This also exposes debug surfaces (for example the Envoy admin port) to the host machine; harden or disable when demoing outside a controlled environment.
+
+### Links
+
+After start, open [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html).
+
+## Features
+
+### Functional
+ 
+- Authors – CRUD with pagination; deletion detaches books via junction table clean-up.
+- Books – CRUD with pagination; authors list can be empty; genres are an enum to avoid premature lookup tables.
+- Search – Full-text search with `websearch` query semantics and relevance ordering.
+
+### Non functional
+- API Gateway – Separates ingress concerns from the service. Supports future decomposition without breaking client contracts.
+- Identity and access management – Swappable Keycloak today, AWS Cognito/Azure AD tomorrow because the service only relies on JWT claims.
+- Concurrency control – Standard HTTP mechanisms (`ETag`, `If-Match`, `If-None-Match`) protect against lost updates in collaborative back-office use.
+- Search boundary – Lightweight search resource models stable, index-friendly attributes. Keeps the door open for OpenSearch or external indexers driven by domain events when query demands grow.
+
+## Development guidelines
+
+- Idempotency – All operations are idempotent. Resource creation uses client-provided IDs to avoid duplicates and makes retries safe.
+- Persistence vs. domain – Dedicated mappers keep domain purity and allow persistence swaps.
+- Module boundaries – Services are atomic, repositories do not cross module boundaries; supports persistence and deployment flexibility.
 
 
-Sample account setup is defined in infra/compose/keycloak/bookstore-realm.json.
+## Limitations
 
-Demo accounts:
-admin/Admin
-staff/staff
+- Secret management via `.env` files – Production would move to AWS Secrets Manager / Vault with automated rotation.
+- Observability and monitoring
+  - Compose stack uses container health checks only.
+  - Production should add centralized logging with alerts, metrics (OpenTelemetry + Prometheus/Grafana or CloudWatch, DataDog), and cost monitoring hooks.
 
-## Local development
+- **Policies**:
+    - Strict least privilege for services accessing secrets; separate roles for read vs. rotate.
+    - Audit logging of secret access (Vault audit device or AWS CloudTrail).
+    - Rotate database credentials and tokens regularly (e.g., every 90 days) with automation pipelines.
 
-1. Start the infrastructure dependencies you need, e.g. `docker compose -f infra/compose/docker-compose.yaml up postgres` (and optionally add `envoy keycloak` if you want to exercise the full stack).
-2. Launch the catalog service with `make run-local`. The `local` Spring profile points the service at `localhost` PostgreSQL and enables an in-process HS256 JWT issuer/decoder so Keycloak is not required for inner-loop work.
-3. On startup the service logs ready-to-use Bearer tokens for `admin` and `staff` roles. Copy the value after `Authorization: Bearer ...` and add it to Postman/curl requests.
-4. When routing through Envoy, keep sending the `Accept: application/vnd.bookstore.v1+json` header—Envoy matches that media type, validates JWTs via Keycloak’s JWKS, applies local rate limiting (100 req/min), and forwards the request downstream with a `Request-Id` header.
+### Evolution Path
+- **Short Term**: Single service for CRUD/search keeps operational overhead low while delivering required functionality.
+- **Medium Term**: Introduce event-driven read models (OpenSearch, DynamoDB) when query load or feature complexity increases.
+- **Long Term**: Split search/indexing into dedicated microservices or serverless (Lambda) functions, reusing the established event stream. This unlocks migration to fully serverless CRUD (Lambda + API Gateway + Aurora Serverless) without re-architecting core domain logic.
 
-### Gateway
+### Scalability & Operations
+- **Stateless Services**: Horizontal scaling through container orchestration (ECS/EKS). Rolling deployments with blue/green releases.
+- **Database Scaling**: Aurora read replicas for reporting; Aurora Serverless v2 as demand grows.
+- **Caching Layer**: Optional ElastiCache/Redis for hot search results or downtime resiliency.
 
-- The Envoy static configuration lives in `infra/gateway/envoy.yaml`. It defines listeners, JWT authn, local rate limiting, header-based routing (on `Accept`), and upstream clusters for the catalog service and Keycloak.
-- Envoy runs in DB-less mode. To apply configuration changes run `docker compose -f infra/compose/docker-compose.yaml restart envoy`.
-- The admin interface is exposed at `http://localhost:9901` (plain HTML/JSON). Use it to inspect stats, config dumps, or to trigger drains; secure/disable it outside local development.
-- Tokens are validated against Keycloak’s JWKS endpoint (`http://keycloak:8080/realms/bookstore/protocol/openid-connect/certs`). The catalog service still performs JWT validation so requests remain protected even if Envoy is bypassed.
+## Validation and Testing
 
-### Search
+- Static analysis: Checkstyle, SpotBugs, OWASP Dependency-Check (Maven `verify` bundles them)
+- JUnit 5: Unit tests for domain slices
+- Integration tests: Testcontainers (PostgreSQL), mock JWT, `MockMvc`; contract coverage directly linked to [catalog-service-api.yaml](libs/api-contract/src/main/resources/openapi/catalog-service-api.yaml)
 
-- PostgreSQL full-text search powers the catalog filters. Title, author, and genre inputs are converted to `websearch_to_tsquery` expressions (think Google-style search syntax) against weighted `to_tsvector` documents.
-- `db/migration/V2__add_fulltext_indexes.sql` creates a combined GIN index using the `simple` dictionary (language-agnostic) plus trigram indexes for fuzzy matching.
-- Ranking uses `ts_rank_cd` with field weighting and defaults to score-desc, title-asc ordering. Clients can request alternative sorting via the usual pageable `sort` parameter; a special `score` key exposes the relevance rank.
-- The dictionary can be overridden with `catalog.search.fts-config` if you need language-specific stemming (for example `english`, `czech`, etc.).
-- `gin_trgm_ops` for similarlity search 
+### Future improvements
+- E2E tests covering Keycloak + Envoy flow, running also after production deployment (CD) 
+- Performance regression harness (Gatling/Locust) to track possible impact of search/index refactors
