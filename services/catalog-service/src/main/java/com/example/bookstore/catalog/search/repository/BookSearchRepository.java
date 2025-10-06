@@ -43,8 +43,9 @@ public class BookSearchRepository {
 
         String regConfig = toRegconfigLiteral();
         String titleDocument = String.format("setweight(to_tsvector(%s, coalesce(b.title, '')), 'A')", regConfig);
-        String authorDocument = String.format("setweight(to_tsvector(%s, coalesce((SELECT string_agg(a.name, ' ') FROM authors a "
-                + "JOIN book_authors ba2 ON a.id = ba2.author_id WHERE ba2.book_id = b.id ORDER BY ba2.author_order), '')), 'B')",
+        String authorDocument = String.format("setweight(to_tsvector(%s, coalesce((SELECT string_agg(a.name, ' ' "
+                        + "ORDER BY ba2.author_order) FROM authors a "
+                        + "JOIN book_authors ba2 ON a.id = ba2.author_id WHERE ba2.book_id = b.id), '')), 'B')",
                 regConfig
         );
 
@@ -268,9 +269,11 @@ public class BookSearchRepository {
 
         return switch (property) {
             case BookSort.TITLE -> "b.title " + direction;
-            case BookSort.AUTHOR -> "COALESCE((SELECT MIN(a.name) FROM authors a JOIN book_authors ba ON a.id = ba.author_id "
-                    + "WHERE ba.book_id = b.id), '') " + direction;
-            case BookSort.GENRE -> "COALESCE((SELECT MIN(bg.genre) FROM book_genres bg WHERE bg.book_id = b.id), '') " + direction;
+            case BookSort.AUTHOR ->
+                    "COALESCE((SELECT MIN(a.name) FROM authors a JOIN book_authors ba ON a.id = ba.author_id "
+                            + "WHERE ba.book_id = b.id), '') " + direction;
+            case BookSort.GENRE ->
+                    "COALESCE((SELECT MIN(bg.genre) FROM book_genres bg WHERE bg.book_id = b.id), '') " + direction;
             case BookSort.PRICE -> "b.price " + direction;
             case BookSort.CREATED_AT -> "b.created_at " + direction;
             case BookSort.UPDATED_AT -> "b.updated_at " + direction;
